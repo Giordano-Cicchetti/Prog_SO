@@ -2,12 +2,14 @@
 CC = gcc
 CFLAGS = -Wall -g
 
-all: server
+all: server client
 
 server: server.c common.h
 	$(CC) $(CFLAGS) -o server server.c
 
-.PHONY: clean
+client: client.c common.h
+	$(CC) $(CFLAGS) -o client client.c
 
+.PHONY: clean
 clean:
-	rm -f server
+	rm -f client server

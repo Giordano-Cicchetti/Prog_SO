@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 
 #include "common.h"
+#include "ANSI-color-codes.h"
 
 /* FC method for processing incoming requests, it takes as argument
  the socket descriptor for the incoming connection */
@@ -33,12 +34,15 @@ void* connection_handler(int socket_desc) {
     // FC initialize the sockaddr_in structure of the client that is writing to the server
     struct sockaddr_in client_addr;
 
-    // FC size of the struct sockaddr_in
+    // FC size of the struct sockaddr_in of the client
     int sockaddr_len = sizeof(client_addr); 
 
     // FC echo loop
     while (1) {
 
+        // FC setting buffer array with all zeros
+        memset(buf,0,buf_len);
+        
         /* FC read message from clients, we do not deal 
            with partially sent messages since it is UDP protocol */
         
@@ -47,14 +51,23 @@ void* connection_handler(int socket_desc) {
         
         // FC receiving
         do {
-            recv_bytes = recvfrom(socket_desc, buf, buf_len, 0, (struct sockaddr *)&client_addr, (socklen_t *)&sockaddr_len);
+
+            recv_bytes = recvfrom(socket_desc, buf, buf_len, 0, (struct sockaddr *) &client_addr, (socklen_t *) &sockaddr_len);
             if (recv_bytes == -1 && errno == EINTR) continue;
             if (recv_bytes == -1) handle_error("Cannot read from the socket");
             if (recv_bytes == 0) break;
+
 		} while ( recv_bytes <= 0 );
 
         // FC debugging
-        if (DEBUG) fprintf(stderr, "Received command of %d bytes...\n",recv_bytes);
+        if (DEBUG) {
+            
+            fprintf(stderr, "Received command of %d bytes...\n", recv_bytes);
+            
+        }
+
+        // FC receive message from client and print it as green bold text
+        printf(BGRN "Client: %s \n" reset ,buf);
 
         /* FC only if the bytes received are equal to the length of the "quit" command the comparison is made,
         in that case no sending is needed so we can restart the loop */
@@ -94,7 +107,7 @@ void* connection_handler(int socket_desc) {
 /* ########################################################################################################################## */
     
 
-// main
+// FC main
 int main(int argc, char* argv[]) {
 
     // FC values returned by the syscalls called in the following part
@@ -126,9 +139,9 @@ int main(int argc, char* argv[]) {
         handle_error("Cannot set SO_REUSEADDR option");
 
     // FC set server address and bind it to the socket
-    server_addr.sin_addr.s_addr = INADDR_ANY; // we want to accept connections from any interface
-    server_addr.sin_family      = AF_INET; // IPV4 addresses
-    server_addr.sin_port        = htons(SERVER_PORT); // don't forget about network byte order! using htons() method
+    server_addr.sin_addr.s_addr = INADDR_ANY; // FC we want to accept connections from any interface
+    server_addr.sin_family      = AF_INET; // FC IPV4 addresses
+    server_addr.sin_port        = htons(SERVER_PORT); // FC don't forget about network byte order! using htons() method
 
     // FC bind address to socket
     ret = bind(socket_desc, (struct sockaddr*) &server_addr, sockaddr_len);
