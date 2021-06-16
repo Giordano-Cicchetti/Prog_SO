@@ -79,7 +79,7 @@ int main(int argc, char* argv[]) {
             break;
 
         }
-
+        memset(buf,0,buf_len);
         // FC receive message from server, recvfrom() with flags = 0 is equivalent to read() from a descriptor
 	    recv_bytes = 0;
     	do {

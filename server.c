@@ -42,7 +42,7 @@ void* connection_handler(int socket_desc) {
 
         // FC setting buffer array with all zeros
         memset(buf,0,buf_len);
-        
+
         /* FC read message from clients, we do not deal 
            with partially sent messages since it is UDP protocol */
         
@@ -51,7 +51,7 @@ void* connection_handler(int socket_desc) {
         
         // FC receiving
         do {
-
+             printf(BGRN "Receiving.. \n" reset);
             recv_bytes = recvfrom(socket_desc, buf, buf_len, 0, (struct sockaddr *) &client_addr, (socklen_t *) &sockaddr_len);
             if (recv_bytes == -1 && errno == EINTR) continue;
             if (recv_bytes == -1) handle_error("Cannot read from the socket");
@@ -67,7 +67,7 @@ void* connection_handler(int socket_desc) {
         }
 
         // FC receive message from client and print it as green bold text
-        printf(BGRN "Client: %s \n" reset ,buf);
+        printf(BRED "Client: %s \n" reset ,buf);
 
         /* FC only if the bytes received are equal to the length of the "quit" command the comparison is made,
         in that case no sending is needed so we can restart the loop */
@@ -78,12 +78,22 @@ void* connection_handler(int socket_desc) {
 
          }
 
-        // FC bytes received
+        memset(buf,0,buf_len);
+         fprintf(stderr, BGRN  "Server:");
+        // FC read a line from stdin, fgets() reads up to sizeof(buf)-1 bytes and on success returns the buf passed as argument
+        if (fgets(buf, sizeof(buf), stdin) != (char*)buf) {
+            fprintf(stderr, "Error while reading from stdin, exiting...\n");
+            exit(EXIT_FAILURE);
+        }
+
+        printf("%s\n",buf);
+         // FC length of the message
+        int msg_len = strlen(buf);
+
+		// FC send message to server, sendto() with flags = 0 is equivalent to write() to a descriptor
         bytes_sent=0;
-        
-        // FC sending the message back, send() with flags = 0 is equivalent to write() on a descriptor
-        while (bytes_sent < recv_bytes) {
-            ret = sendto(socket_desc, buf, recv_bytes, 0, (struct sockaddr *) &client_addr, (socklen_t) sockaddr_len);
+        while ( bytes_sent < msg_len) {
+            ret = sendto(socket_desc, buf, msg_len, 0, (struct sockaddr*) &client_addr, sizeof(struct sockaddr_in));
             if (ret == -1 && errno == EINTR) continue;
             if (ret == -1) handle_error("Cannot write to the socket");
             bytes_sent += ret;
