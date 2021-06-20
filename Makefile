@@ -4,11 +4,11 @@ CFLAGS = -Wall -g
 
 all: server client
 
-server: server.c common.h
-	$(CC) $(CFLAGS) -o server server.c
+server: server.c common.h structures.h binary_file_search.h structures.c
+	$(CC) $(CFLAGS) -o server server.c binary_file_search.c structures.c
 
-client: client.c common.h
-	$(CC) $(CFLAGS) -o client client.c
+client: client.c common.h structures.h binary_file_search.h structures.c
+	$(CC) $(CFLAGS) -o client client.c binary_file_search.c structures.c
 
 .PHONY: clean
 clean:

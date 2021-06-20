@@ -1,3 +1,5 @@
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,8 +8,10 @@
 #include <arpa/inet.h>  // htons() and inet_addr()
 #include <netinet/in.h> // struct sockaddr_in
 #include <sys/socket.h>
-
+#include <assert.h>
+#include <fcntl.h>
 #include "common.h"
+#include "structures.h"
 #include "ANSI-color-codes.h"
 
 // FC main
@@ -34,11 +38,185 @@ int main(int argc, char* argv[]) {
     server_addr.sin_family      = AF_INET; // FC IPV4 addresses
     server_addr.sin_port        = htons(SERVER_PORT); // FC don't forget about network byte order! using htons() method
 
-    // FC buffer filled with zeros and its length and size
-    char buf[1024];
+    // FC buffer for incoming messages filled with zeros and its length and size
+    char buf[MESSAGE_SIZE];
     size_t buf_len = sizeof(buf);
     int msg_len;
     memset(buf,0,buf_len);
+
+
+    //GC create the struct user and ask to the user if he want to sign_in or sign_up
+    User u;
+    Message m;
+    Message* message;
+    
+    char* username = (char*)malloc(sizeof(char)*MAX_CREDENTIAL);
+    char* password = (char*)malloc(sizeof(char)*MAX_CREDENTIAL);
+    
+    printf("Benvenuto nel programma di prova degli utenti! \n");
+    while(1){
+
+        memset(buf,0,buf_len);
+        printf("Sei già registrato?(Y/N) ");
+        char c = (char) getchar();
+        while(getchar()!='\n');
+
+        //GC if the user want to sign_in
+        if(c=='Y' || c=='y'){
+            //GC take the username
+            printf("\ninserisci il tuo nickname:  ");
+            scanf("%s",username);
+            //GC take the password
+            printf("\ninserisci la tua password:  ");
+            scanf("%s",password);
+
+            printf("\nUsername:%s  Password:%s \n",username,password);
+            //GC initialize the user struct
+            User_init(&u, username , password );
+
+            //GC inizializza struttura messaggio di login e invia 
+            //chiedendo al server di convalidare le credenziali
+            Message_init(&m,LOGIN,NULL,NULL,(void*)&u,USER_SIZE);
+            bytes_sent=0;
+            while ( bytes_sent < MESSAGE_SIZE) {
+                ret = sendto(socket_desc, &m , MESSAGE_SIZE, 0, (struct sockaddr*) &server_addr, sizeof(struct sockaddr_in));
+                if (ret == -1 && errno == EINTR) continue;
+                if (ret == -1) handle_error("Cannot write to the socket");
+                bytes_sent = ret;
+            }
+            // FC debugging
+            if (DEBUG) fprintf(stderr, "Sent message of %d bytes...\n", bytes_sent);
+
+            //GC wait for server's response
+            recv_bytes = 0;
+    	    do {
+                ret = recvfrom(socket_desc, buf, buf_len, 0, NULL, NULL);
+                if (ret == -1 && errno == EINTR) continue;
+                if (ret == -1) handle_error("Cannot read from the socket");
+                if (ret == 0) break;
+                recv_bytes = ret;
+
+            } while ( recv_bytes<=0 );
+
+            //GC the inner buffer is a message from the server
+            message=(Message*)buf;
+
+            int response=message->header;
+
+            //GC if response is LOGIN_OK then quit the loop and go next
+            if(response==LOGIN_OK) {
+                printf("sei un utente loggato \n");
+                //GC this clear the stdin
+                while(getchar()!='\n');
+                break;
+            }
+            //GC else if username or password is incorrect continue the loop
+            else {
+                printf("username o password errata \n");
+                //GC this clear the stdin
+                while(getchar()!='\n');
+                continue;
+            }
+        }
+
+
+        //GC if the user want to sign_up
+        else if(c=='N' || c=='n'){
+            //GC take the username
+            printf("Per continuare bisogna registrarsi.\nInserire un nickname:  ");
+            scanf("%s",username);
+            //GC take the password
+            printf("\ninserisci una password:  ");
+            scanf("%s",password);
+            printf("\nUsername:%s  Password:%s \n",username,password);
+            //GC initialize the user struct
+            User_init(&u, username , password );
+            
+            //GC inizializza struttura messaggio per chiedere se username già esistente e invia 
+            Message_init(&m,PREREGISTRATION,NULL,NULL,(void*)&u,USER_SIZE);
+            bytes_sent=0;
+            while ( bytes_sent < MESSAGE_SIZE) {
+                ret = sendto(socket_desc, &m , MESSAGE_SIZE, 0, (struct sockaddr*) &server_addr, sizeof(struct sockaddr_in));
+                if (ret == -1 && errno == EINTR) continue;
+                if (ret == -1) handle_error("Cannot write to the socket");
+                bytes_sent = ret;
+            }
+
+            // FC debugging
+            if (DEBUG) fprintf(stderr, "Sent message of %d bytes...\n", bytes_sent);
+
+            //GC wait for server's response
+            recv_bytes = 0;
+    	    do {
+                ret = recvfrom(socket_desc, buf, buf_len, 0, NULL, NULL);
+                if (ret == -1 && errno == EINTR) continue;
+                if (ret == -1) handle_error("Cannot read from the socket");
+                if (ret == 0) break;
+                recv_bytes = ret;
+
+            } while ( recv_bytes<=0 );
+            //GC the inner buffer is a message from the server
+            message=(Message*)buf;
+            int response=message->header;
+            
+            //GC if exists a user with this username continue the loop 
+            if(response==PREREGISTRATION_KO) {
+                printf("Username già in uso! \n");
+                //GC this clear the stdin
+                while(getchar()!='\n');
+                continue;
+            }
+            //GC else ask the server to registrate the user, quit the loop and go next
+            else {
+                //GC inizializza struttura messaggio e invia 
+                Message_init(&m,REGISTRATION,NULL,NULL,(void*)&u,USER_SIZE);
+                bytes_sent=0;
+                while ( bytes_sent < MESSAGE_SIZE) {
+                    ret = sendto(socket_desc, &m , MESSAGE_SIZE, 0, (struct sockaddr*) &server_addr, sizeof(struct sockaddr_in));
+                    if (ret == -1 && errno == EINTR) continue;
+                    if (ret == -1) handle_error("Cannot write to the socket");
+                    bytes_sent = ret;
+                }
+                // FC debugging
+                if (DEBUG) fprintf(stderr, "Sent message of %d bytes...\n", bytes_sent);
+
+
+                //GC Wait for response from the server
+                memset(buf,0,buf_len);
+                recv_bytes = 0;
+                do {
+                    ret = recvfrom(socket_desc, buf, buf_len, 0, NULL, NULL);
+                    if (ret == -1 && errno == EINTR) continue;
+                    if (ret == -1) handle_error("Cannot read from the socket");
+                    if (ret == 0) break;
+                    recv_bytes = ret;
+
+                } while ( recv_bytes<=0 );
+
+                message=(Message*)buf;
+
+                response=message->header;
+
+                //GC if response is equal to RESPONSE_KO, something went wrong so 
+                //its better to quit the program
+                if(response==REGISTRATION_KO){
+                    printf("errore aggiunta user \n");
+                    return 1;
+                }
+                
+                //GC this clear the stdin
+                while(getchar()!='\n');
+                break;
+            }
+            //GC if user insert not a Y or a N continue the loop
+        }
+    }
+
+    
+
+    free(username);
+    free(password);
+    
 
     // FC main loop
     while (1) {
