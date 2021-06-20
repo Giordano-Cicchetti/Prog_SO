@@ -7,9 +7,19 @@
 #include <arpa/inet.h>  // htons()
 #include <netinet/in.h> // struct sockaddr_in
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <assert.h>
+#include <fcntl.h>
 
 #include "common.h"
 #include "ANSI-color-codes.h"
+#include "structures.h"
+#include "binary_file_search.h"
+
+
+int fd;
+int num_users;
 
 /* FC method for processing incoming requests, it takes as argument
  the socket descriptor for the incoming connection */
@@ -51,7 +61,7 @@ void* connection_handler(int socket_desc) {
         
         // FC receiving
         do {
-             printf(BGRN "Receiving.. \n" reset);
+            printf(BGRN "Receiving.. \n" reset);
             recv_bytes = recvfrom(socket_desc, buf, buf_len, 0, (struct sockaddr *) &client_addr, (socklen_t *) &sockaddr_len);
             if (recv_bytes == -1 && errno == EINTR) continue;
             if (recv_bytes == -1) handle_error("Cannot read from the socket");
@@ -66,6 +76,99 @@ void* connection_handler(int socket_desc) {
             
         }
 
+        //GC I see the incoming bytes as a message struct
+
+        Message* message= (Message*)buf;
+        Message m ;
+
+        //GC I check for the type of the message looking into the header
+
+        int header = message->header;
+
+        //GC if the message is a request of login do some stuff
+        if(header==LOGIN){
+            User* u = (User*) message->content;
+            printf(BRED "Server: %s ask for login \n" reset ,u->username);
+            int pos=normalFileSearch(fd, u, sizeof(User), User_compare);
+            //GC if user's credentials are right send LOGIN_OK
+            if(pos >= 0){
+                Message_init(&m,LOGIN_OK,NULL,NULL,"login accept",13);
+                printf(BRED "Server: %s login accepted \n" reset ,u->username);
+            }
+            //GC else send LOGIN_KO
+            else{
+                Message_init(&m,LOGIN_KO,NULL,NULL,"login failed",13);
+                printf(BRED "Server: %s login denied \n" reset ,u->username);
+            }
+            bytes_sent=0;
+            while ( bytes_sent < MESSAGE_SIZE) {
+                ret = sendto(socket_desc, &m, MESSAGE_SIZE, 0, (struct sockaddr*) &client_addr, sizeof(struct sockaddr_in));
+                if (ret == -1 && errno == EINTR) continue;
+                if (ret == -1) handle_error("Cannot write to the socket");
+                bytes_sent = ret;
+            }
+            printf("sent message to the client for login \n");
+            if(DEBUG)User_print(fd,num_users);
+            continue;
+        }
+        //GC if the message is a request of username validation do some other stuff
+        else if(header==PREREGISTRATION){
+            User* u = (User*) message->content;
+            printf(BRED "Server: %s ask for valid username \n" reset ,u->username);
+            //GC search if username already exists 
+            int pos=normalFileSearch(fd, u, sizeof(User), User_compare_only_username);
+            //GC if username exists send PREREGISTRATION_KO
+            if(pos >= 0){
+                Message_init(&m,PREREGISTRATION_KO,NULL,NULL,"username already exists",24);
+                printf(BRED "Username already exists \n" reset);
+                
+            }
+            //GC else send PREREGISTRATION_OK
+            else{
+                Message_init(&m,PREREGISTRATION_OK,NULL,NULL,"valid username",15);
+                printf(BRED "Valid username \n" reset );
+            }
+            bytes_sent=0;
+            while ( bytes_sent < MESSAGE_SIZE) {
+                ret = sendto(socket_desc, &m, MESSAGE_SIZE, 0, (struct sockaddr*) &client_addr, sizeof(struct sockaddr_in));
+                if (ret == -1 && errno == EINTR) continue;
+                if (ret == -1) handle_error("Cannot write to the socket");
+                bytes_sent = ret;
+            }
+            printf("sent message to the client for username validation \n");
+            continue;
+
+        }
+        //GC if the message is a request of registration do some other stuff
+        else if(header==REGISTRATION){
+            User* u = (User*) message->content;
+            printf(BRED "Server: %s ask for registration \n" reset ,u->username);
+            //GC write the user in the file to keep memory
+            int res= binaryFileWrite(fd, u , USER_SIZE, num_users);
+            //GC if not ok send REGISTRATION_KO
+            if(res==-1){
+                Message_init(&m,REGISTRATION_KO,NULL,NULL,"error in registration",22);
+                printf(BRED "Error in registration \n" reset );
+            }
+            //else send REGISTRATION_OK
+            else{
+                Message_init(&m,REGISTRATION_OK,NULL,NULL,"registration ok",16);
+                printf(BRED "Server: %s registration ok \n" reset ,u->username);
+                num_users++;
+            }
+            bytes_sent=0;
+            while ( bytes_sent < MESSAGE_SIZE) {
+                ret = sendto(socket_desc, &m, MESSAGE_SIZE, 0, (struct sockaddr*) &client_addr, sizeof(struct sockaddr_in));
+                if (ret == -1 && errno == EINTR) continue;
+                if (ret == -1) handle_error("Cannot write to the socket");
+                bytes_sent = ret;
+            }
+            printf("sent message to the client for registration \n");
+            if(DEBUG)User_print(fd,num_users);
+            continue;
+
+        }
+
         // FC receive message from client and print it as green bold text
         printf(BRED "Client: %s \n" reset ,buf);
 
@@ -77,7 +180,7 @@ void* connection_handler(int socket_desc) {
             continue;
 
          }
-
+        printf(" header %d \n from %s to %s \n",((Message*)buf)->header,((Message*)buf)->from,((Message*)buf)->to);
         memset(buf,0,buf_len);
          fprintf(stderr, BGRN  "Server:");
         // FC read a line from stdin, fgets() reads up to sizeof(buf)-1 bytes and on success returns the buf passed as argument
@@ -96,7 +199,7 @@ void* connection_handler(int socket_desc) {
             ret = sendto(socket_desc, buf, msg_len, 0, (struct sockaddr*) &client_addr, sizeof(struct sockaddr_in));
             if (ret == -1 && errno == EINTR) continue;
             if (ret == -1) handle_error("Cannot write to the socket");
-            bytes_sent += ret;
+            bytes_sent = ret;
         }
 
     }
@@ -119,6 +222,18 @@ void* connection_handler(int socket_desc) {
 
 // FC main
 int main(int argc, char* argv[]) {
+
+    //GC open the binary file with the users inside 
+    fd=open(FILENAME, O_CREAT|O_RDWR,0666);
+
+    //GC we get the size of the file
+    struct stat stats;
+    fstat(fd, &stats);
+
+    //GC from the size, we determine the number of records
+    int size=stats.st_size;
+    num_users=size/USER_SIZE;
+    assert(!(size%USER_SIZE));
 
     // FC values returned by the syscalls called in the following part
     int ret;
@@ -175,5 +290,6 @@ int main(int argc, char* argv[]) {
     }
 
     // FC this will never be executed
+    close(fd);
     exit(EXIT_SUCCESS); 
 }

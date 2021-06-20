@@ -12,4 +12,29 @@
 #define SERVER_COMMAND  "QUIT\n"
 #define SERVER_PORT     2015
 
+//define header for struct message
+#define LOGIN               0
+#define LOGIN_OK            1
+#define LOGIN_KO            2 
+
+#define PREREGISTRATION     3
+#define PREREGISTRATION_OK  4
+#define PREREGISTRATION_KO  5
+
+#define REGISTRATION        6
+#define REGISTRATION_OK     7
+#define REGISTRATION_KO     8
+
+#define NORMAL_MESSAGE      9
+
+#define SERVER_RECV         10 //GC send to a client when the server has received the message
+#define CLIENT_RECV         11 //send to 1st client when 2nd client signed_in
+#define CLIENT_READ         12 //send to 1st client when 2nd client ask to communicate
+
+#define CHAT_REQUEST        13
+#define CHAT_OK             14
+#define CHAT_KO             15
+
+typedef int (*CompareFn)(void* v1, void* v2);
+
 #endif
