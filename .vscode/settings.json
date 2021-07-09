@@ -1,6 +1,13 @@
 {
     "files.associations": {
         "ansi-color-codes.h": "c",
-        "types.h": "c"
-    }
+        "types.h": "c",
+        "messages_list.h": "c",
+        "assert.h": "c",
+        "in.h": "c",
+        "stdio.h": "c",
+        "binary_file_search.h": "c",
+        "errno.h": "c"
+    },
+    "C_Cpp.errorSquiggles": "Enabled"
 }

@@ -7,34 +7,35 @@
 #define handle_error(msg)           do { perror(msg); exit(EXIT_FAILURE); } while (0)
 
 // FC parameters of configuration 
-#define DEBUG           0   // FC display debug messages
+#define DEBUG           1  // FC display debug messages
 #define SERVER_ADDRESS  "127.0.0.1"
 #define SERVER_COMMAND  "QUIT\n"
 #define SERVER_PORT     2015
 
-//define header for struct message
-#define LOGIN               0
-#define LOGIN_OK            1
-#define LOGIN_KO            2 
+//GC defining headers for struct message
+#define LOGIN               0 //sent from the client to the server to login
+#define LOGIN_OK            1 //sent from the server to confirm login
+#define LOGIN_KO            2 //sent from the server to deny login
 
-#define PREREGISTRATION     3
-#define PREREGISTRATION_OK  4
-#define PREREGISTRATION_KO  5
+#define PREREGISTRATION     3 //sent from the client with the credential chosen for the registration
+#define PREREGISTRATION_OK  4 //sent from the server to confirm they are usable
+#define PREREGISTRATION_KO  5 //sent from the server to deny preregistration
 
-#define REGISTRATION        6
-#define REGISTRATION_OK     7
-#define REGISTRATION_KO     8
+#define REGISTRATION        6 //sent from the client to ask for registration
+#define REGISTRATION_OK     7 //sent from the server to confirm registration
+#define REGISTRATION_KO     8 //sent from the server to deny registration
 
-#define NORMAL_MESSAGE      9
+#define NORMAL_MESSAGE      9 //sent from the client as a message of the chat
 
-#define SERVER_RECV         10 //GC send to a client when the server has received the message
-#define CLIENT_RECV         11 //send to 1st client when 2nd client signed_in
-#define CLIENT_READ         12 //send to 1st client when 2nd client ask to communicate
+//GC for the 2 ticks ( Whatsapp-like )
+#define SERVER_RECV         10 //sent to the client when the server has received the message (9)
+#define CLIENT_READ         11 //sent to the client when the other client of the chat is inside
 
-#define CHAT_REQUEST        13
-#define CHAT_OK             14
-#define CHAT_KO             15
+#define CHAT_REQUEST        12 //sent from the client when the interlocutor is chosen 
+#define CHAT_OK             13 //sent from the server when the chat is created
+#define CHAT_KO             14 //sent from the client when asks to leave the chat
 
+//GC to compare Users, defined in "structures.c" as User_compare and passed in "server.c" to the NormalFileSearch operation
 typedef int (*CompareFn)(void* v1, void* v2);
 
 #endif

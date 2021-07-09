@@ -66,8 +66,21 @@ void* connection_handler(int socket_desc) {
             if (recv_bytes == -1 && errno == EINTR) continue;
             if (recv_bytes == -1) handle_error("Cannot read from the socket");
             if (recv_bytes == 0) break;
-
+            
 		} while ( recv_bytes <= 0 );
+
+
+        //FC setting the ip address to a struct sockaddr_in -> struct in_addr -> field "s_addr" of "in_addr_t" type (in NBO)
+        //client_addr.sin_addr.s_addr = inet_addr("10.0.0.1");
+
+        //FC taking the ip address from the clientaddr struct so that server can know who is the client
+        char* dst=NULL;
+        dst = inet_ntoa(client_addr.sin_addr); //FC return the IP
+        printf(BRED "%s \n" reset ,dst); //FC prints "10.0.0.1"
+     
+
+
+
 
         // FC debugging
         if (DEBUG) {

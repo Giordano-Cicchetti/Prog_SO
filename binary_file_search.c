@@ -10,7 +10,7 @@
 #include "common.h"
 
 
-
+// GC printing User
 void User_print(int fd,int num_users){
   User u ;
   int i=num_users-1; // read in reverse order!!
@@ -20,6 +20,7 @@ void User_print(int fd,int num_users){
   }
 }
 
+//GC searching a user in the file
 int normalFileSearch(int fd, void* item, int item_size, CompareFn compare){
   //1 we get the size of the file
   struct stat stats;
@@ -59,6 +60,7 @@ int normalFileSearch(int fd, void* item, int item_size, CompareFn compare){
   return -1;
 }
 
+//GC writing a user in the file
 int binaryFileWrite(int fd, void* src, int item_size, int pos){
   off_t offset=lseek(fd, pos*item_size, SEEK_SET);
   if (offset<0) {
@@ -70,7 +72,8 @@ int binaryFileWrite(int fd, void* src, int item_size, int pos){
     return -1;
   return 0;
 }
-
+ 
+//GC reading a user in the file
 int binaryFileRead(int fd, void* dest, int item_size, int pos){
   size_t desired_offset=pos*item_size;
   off_t offset=lseek(fd, desired_offset, SEEK_SET);

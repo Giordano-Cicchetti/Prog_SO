@@ -1,5 +1,4 @@
-
-typedef int (*CompareFn)(void* v1, void* v2);
+//FC The file "registered_users" is simulating a Database to keep the Users registered to the "Private Chat"
 
 //GC function to print all the users in the file mapped in the file descriptor
 void User_print(int fd,int num_users);
