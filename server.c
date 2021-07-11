@@ -248,6 +248,23 @@ int main(int argc, char* argv[]) {
     num_users=size/USER_SIZE;
     assert(!(size%USER_SIZE));
 
+    char dummy[num_users*MAX_CREDENTIAL];
+    User_all_usernames(fd,dummy,num_users);
+    printf("users:\n%s",dummy);
+    const char s[1] = "\n";
+    char *token;
+
+    /* get the first token */
+    token = strtok(dummy, s);
+
+    /* walk through other tokens */
+    while( token != NULL ) {
+    printf( "%s\n", token );
+
+    token = strtok(NULL, s);
+    }
+
+
     // FC values returned by the syscalls called in the following part
     int ret;
 

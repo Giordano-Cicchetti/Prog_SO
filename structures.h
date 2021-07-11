@@ -114,3 +114,11 @@ typedef struct UserOnlineListItem{
   UserOnline* useronline;
 } UserOnlineListItem;
 
+//######################################################################################################################
+
+//*RECEIVER_THREAD_ARG*
+
+typedef struct handler_args_s
+{
+    int socket_desc;
+} handler_args_t;

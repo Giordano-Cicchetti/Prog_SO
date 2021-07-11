@@ -1,8 +1,12 @@
 //FC The file "registered_users" is simulating a Database to keep the Users registered to the "Private Chat"
 
+//GC to compare Users, defined in "structures.c" as User_compare and passed in "server.c" to the NormalFileSearch operation
+typedef int (*CompareFn)(void* v1, void* v2);
+
 //GC function to print all the users in the file mapped in the file descriptor
 void User_print(int fd,int num_users);
 
+void User_all_usernames(int fd,char* buf,int num_users);
 
 //GC returns the position of an an item od size item_size
 //within a file of records
