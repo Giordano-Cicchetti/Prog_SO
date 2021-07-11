@@ -187,10 +187,9 @@ void Add_message_to_list(ListHead* head, int header, char* content, char* from, 
     (new_element->list).next=NULL;
     (new_element->list).prev=NULL;
     new_element->msg=(Message*)malloc(sizeof(Message));
-    new_element->msg->header=header;
-    strcpy(new_element->msg->content, content);
-    strcpy(new_element->msg->to, to);
-    strcpy(new_element->msg->from, from);
+   
+    Message_init(new_element->msg,header,from,to,content,MAX_CONTENT);
+   
 
     ListItem* result= List_insert(head,head->last, (ListItem*) new_element);
     assert(result);
@@ -219,7 +218,7 @@ void Remove_all_messages_from_list(ListHead* list){
     if(DEBUG)
      MessageList_print(list);
 
-    }
+  }
 
 
 //*CHAT*
@@ -238,18 +237,102 @@ void Chat_create(Chat* chat,char user1[MAX_CREDENTIAL], char user2[MAX_CREDENTIA
 //FC chat destroyer 
 void Chat_destroy(Chat* chat){
 
+  printf(BGRN "Destroying chat between %s and %s \n" reset,chat->user1,chat->user2);
   Remove_all_messages_from_list(chat->list_msg);
-  chat=NULL;
+  free(chat);
   
-  }
+}
 
 //FC printer of the chat messages
 void Chat_print(Chat* chat){
   
     printf(BGRN "Chat between %s and %s \n" reset,chat->user1,chat->user2);
     if(chat->list_msg != NULL)
-    MessageList_print(chat->list_msg);   
+      MessageList_print(chat->list_msg);   
   
 }
 
+// FC adding a Chat to the list kept by the server giving users of the Chat and an empty list of messages
+void Add_chat_to_list(ListHead* head, char user1[MAX_CREDENTIAL], char user2[MAX_CREDENTIAL], ListHead* msg_list){
 
+    ChatListItem* new_element= (ChatListItem*)malloc(sizeof(ChatListItem));
+   
+    if (!new_element) {
+      printf("Out of memory\n");
+      exit(EXIT_FAILURE);
+    }
+
+    (new_element->list).next=NULL;
+    (new_element->list).prev=NULL;
+    new_element->chat=(Chat*)malloc(sizeof(Chat));
+    Chat_create(new_element->chat,user1,user2,msg_list);
+   
+   
+
+    ListItem* result= List_insert(head,head->last, (ListItem*) new_element);
+    assert(result);
+  
+
+  if(DEBUG)
+    Chat_print(new_element->chat);
+
+
+}
+
+void Chat_list_print(ListHead* list){
+      ListItem* aux=list->first;
+      while(aux){
+      Chat_print(((ChatListItem*)aux)->chat);
+
+      aux=aux->next;
+      }
+}
+
+void Remove_all_chats_from_list(ListHead* list){
+
+    if(DEBUG)
+      printf("\n ....Removing all chats from the list.... \n \n");
+
+    ListItem* aux=list->first;
+
+    while(aux){
+        ListItem* item=aux;
+        aux=aux->next;
+        List_detach(list, item);
+        Chat_destroy(((ChatListItem*)item)->chat);
+        free(item);
+       
+
+    }
+
+    if(DEBUG)
+     Chat_list_print(list);
+
+  }
+  
+
+
+
+
+/* COSA MANCA
+//FC adding a chat to a list of chats
+
+void Find_chat_by_username()
+
+Chat* Chat_ispresent_between_users(user1,user2,lista chat)
+
+
+void Add_useronline_to_list(solo se non esiste già!) dando ip , username e Chat
+
+void dato_username_dammi_ip_useronline(listauseronline) senno rida null e significa non ce tale user online quindi no forwarding
+
+void Remove_useronline_to_list(bool all_or_one)
+
+
+funzione che legga lato client la stringa inviata dal server con tutti gli utenti e la parsi vedendo se ce quell'utente li dentro dato come input dall'utente.
+
+
+
+lista utenti lato SERVER
+
+*/

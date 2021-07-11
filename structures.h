@@ -68,6 +68,7 @@ void Message_init(Message* m,int header,char* from,char* to,void* content,int co
 void MessageList_print(ListHead* head);
 void Remove_all_messages_from_list(ListHead* list);
 void Add_message_to_list(ListHead* head, int header, char* content, char* from, char* to);
+void Remove_all_chats_from_list(ListHead* list);
 
 //######################################################################################################################
 
@@ -84,6 +85,8 @@ typedef struct {
 void Chat_create(Chat* chat,char user1[MAX_CREDENTIAL], char user2[MAX_CREDENTIAL], ListHead* list);
 void Chat_destroy(Chat* chat);
 void Chat_print(Chat* chat);
+void Add_chat_to_list(ListHead* head, char user1[MAX_CREDENTIAL], char user2[MAX_CREDENTIAL], ListHead* msg_list);
+void Chat_list_print(ListHead* list);
 
 //######################################################################################################################
 
