@@ -13,6 +13,44 @@
 #include "common.h"
 #include "structures.h"
 #include "ANSI-color-codes.h"
+#include <pthread.h>
+
+
+void * receiver_handler(void *arg) {
+
+    int socket_desc = *((int*) arg);
+    
+    char buf[MESSAGE_SIZE];
+    size_t buf_len = sizeof(buf);
+    int recv_bytes;
+    int ret;
+    
+
+    while(1){
+        memset(buf,0,buf_len);
+        // FC receive message from server, recvfrom() with flags = 0 is equivalent to read() from a descriptor
+	    recv_bytes = 0;
+    	do {
+            ret = recvfrom(socket_desc, buf, buf_len, 0, NULL, NULL);
+            if (ret == -1 && errno == EINTR) continue;
+            if (ret == -1) handle_error("Cannot read from the socket");
+	        if (ret == 0) break;
+	        recv_bytes = ret;
+
+	    } while ( recv_bytes<=0 );
+        buf[recv_bytes-1]='\0';
+        // FC debugging
+        if (DEBUG) fprintf(stderr, "Received answer of %d bytes...\n",recv_bytes);
+
+        // FC the message from the server is arrived
+        printf(BRED MOVE_RIGHT "%s\e[1;32m\n", buf); 
+
+    
+
+    }
+    pthread_exit(NULL);
+}
+
 
 // FC main
 int main(int argc, char* argv[]) {
@@ -218,16 +256,29 @@ int main(int argc, char* argv[]) {
     free(password);
     
 
-    // FC main loop
+    //GC create a thread to handler receiving messages
+    pthread_t receiver_thread;
+    ret = pthread_create(&receiver_thread, NULL, receiver_handler , (void *)&socket_desc);
+    
+    if (ret) handle_error_en(ret, "Could not create a new thread");
+    
+    if (DEBUG) fprintf(stderr, "New thread created to handle the request!\n");
+        
+    ret = pthread_detach(receiver_thread); //GC I won't phtread_join() on this thread
+    if (ret) handle_error_en(ret, "Could not detach the thread");
+    // FC asking for the message to send
+    printf(BGRN "Start your chat:\n");
+
+    // FC main loop to handler sending messages
     while (1) {
 
         // FC quit command and its size
         char* quit_command = SERVER_COMMAND;
         size_t quit_command_len = strlen(quit_command);
 
-        // FC asking for the message to send
-        printf("Insert your message: ");
-
+        
+        
+        
         // FC read a line from stdin, fgets() reads up to sizeof(buf)-1 bytes and on success returns the buf passed as argument
         if (fgets(buf, sizeof(buf), stdin) != (char*)buf) {
             fprintf(stderr, "Error while reading from stdin, exiting...\n");
@@ -258,22 +309,7 @@ int main(int argc, char* argv[]) {
 
         }
         memset(buf,0,buf_len);
-        // FC receive message from server, recvfrom() with flags = 0 is equivalent to read() from a descriptor
-	    recv_bytes = 0;
-    	do {
-            ret = recvfrom(socket_desc, buf, buf_len, 0, NULL, NULL);
-            if (ret == -1 && errno == EINTR) continue;
-            if (ret == -1) handle_error("Cannot read from the socket");
-	        if (ret == 0) break;
-	        recv_bytes = ret;
-
-	    } while ( recv_bytes<=0 );
-
-        // FC debugging
-        if (DEBUG) fprintf(stderr, "Received answer of %d bytes...\n",recv_bytes);
-
-        // FC the message from the server is arrived
-        printf("Server response: %s\n", buf); 
+        
     }
 
 

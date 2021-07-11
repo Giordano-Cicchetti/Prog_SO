@@ -20,6 +20,18 @@ void User_print(int fd,int num_users){
   }
 }
 
+//GC put all_usernames in buf 
+void User_all_usernames(int fd,char* buf,int num_users) {
+  User u ;
+  buf[0]='\0';
+  int i=num_users-1; // read in reverse order!!
+  while(!binaryFileRead(fd, &u, sizeof(User), i)){
+    strcat(buf,u.username);
+    strcat(buf,"\n");
+    --i;
+  }
+}
+
 //GC searching a user in the file
 int normalFileSearch(int fd, void* item, int item_size, CompareFn compare){
   //1 we get the size of the file

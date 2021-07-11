@@ -3,6 +3,7 @@
 //GC function to print all the users in the file mapped in the file descriptor
 void User_print(int fd,int num_users);
 
+void User_all_usernames(int fd,char* buf,int num_users);
 
 //GC returns the position of an an item od size item_size
 //within a file of records
