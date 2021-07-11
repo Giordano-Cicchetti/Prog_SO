@@ -92,15 +92,16 @@ ListItem* List_find(ListHead* head, ListItem* item) {
 //FC inserting a list item to the list
 
 ListItem* List_insert(ListHead* head, ListItem* prev, ListItem* item) {
-  if (item->next || item->prev)
+  if (item->next || item->prev){
+    printf(BRED "sssss]\n");
     return 0;
+  }
   
   // we check that the element is not in the list
   ListItem* instance=List_find(head, item);
   assert(!instance);
 
   // we check that the previous is inthe list
-
   if (prev) {
     ListItem* prev_instance=List_find(head, prev);
     assert(prev_instance);
@@ -112,16 +113,21 @@ ListItem* List_insert(ListHead* head, ListItem* prev, ListItem* item) {
   if (prev) {
     item->prev=prev;
     prev->next=item;
+     
   }
   if (next) {
     item->next=next;
     next->prev=item;
+     
   }
-  if (!prev)
+  if (!prev){
     head->first=item;
-  if(!next)
+    
+    }
+  if(!next){
     head->last=item;
-  ++head->size;
+  }
+  (head->size)+=1;
   return item;
 }
 
@@ -169,51 +175,81 @@ void MessageList_print(ListHead* head){
 
 
 // FC add a message to the list of messages in a chat
-void Add_message_to_list(ListHead head, int header, char* content, char* to, char* from){
-  
-  List_init(&head);
+void Add_message_to_list(ListHead* head, int header, char* content, char* from, char* to){
   
   MessageListItem* new_element= (MessageListItem*)malloc(sizeof(MessageListItem));
    
-    if (! new_element) {
-      printf("out of memory\n");
+    if (!new_element) {
+      printf("Out of memory\n");
       exit(EXIT_FAILURE);
     }
 
-    new_element->list.prev=0;
-    new_element->list.next=0;
+    (new_element->list).next=NULL;
+    (new_element->list).prev=NULL;
     new_element->msg=(Message*)malloc(sizeof(Message));
     new_element->msg->header=header;
     strcpy(new_element->msg->content, content);
     strcpy(new_element->msg->to, to);
     strcpy(new_element->msg->from, from);
 
-    ListItem* result=
-      List_insert(&head, head.last, (ListItem*) new_element);
+    ListItem* result= List_insert(head,head->last, (ListItem*) new_element);
     assert(result);
   
   if(DEBUG)
-    MessageList_print(&head);
+    MessageList_print(head);
 }
 
-// FC remove all messages from the list in a chat
-void Remove_all_messages_from_list(ListHead list){
+// FC remove all messages from the list in a chat (memory safe)
+void Remove_all_messages_from_list(ListHead* list){
 
     if(DEBUG)
-        printf("removing all elements \n");
-    ListItem* aux=list.first;
-    int k=0;
+        printf("\n ....Removing all messages from the list.... \n \n");
+
+    ListItem* aux=list->first;
     while(aux){
         ListItem* item=aux;
         aux=aux->next;
-        List_detach(&list, item);
+        List_detach(list, item);
         free(((MessageListItem*)item)->msg);
         free(item);
+       
 
-        ++k;
     }
 
     if(DEBUG)
-     MessageList_print(&list);
+     MessageList_print(list);
 
     }
+
+
+//*CHAT*
+
+//FC chat creator giving two users,a Chat struct
+void Chat_create(Chat* chat,char user1[MAX_CREDENTIAL], char user2[MAX_CREDENTIAL], ListHead* list){
+  
+  assert(chat);
+  strcpy(chat->user1,user1);
+  strcpy(chat->user2,user2);
+  List_init(list);
+  chat->list_msg=list;
+
+}
+
+//FC chat destroyer 
+void Chat_destroy(Chat* chat){
+
+  Remove_all_messages_from_list(chat->list_msg);
+  chat=NULL;
+  
+  }
+
+//FC printer of the chat messages
+void Chat_print(Chat* chat){
+  
+    printf(BGRN "Chat between %s and %s \n" reset,chat->user1,chat->user2);
+    if(chat->list_msg != NULL)
+    MessageList_print(chat->list_msg);   
+  
+}
+
+

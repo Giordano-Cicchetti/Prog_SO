@@ -17,8 +17,13 @@
 #include "structures.h"
 #include "binary_file_search.h"
 
+// FC lists used by the server to handle users online and chats created during its lifetime
+ListHead chat_list;
+ListHead usersonline_list;
 
+// GC file descriptor for users' file
 int fd;
+// GC number of users registered
 int num_users;
 
 /* FC method for processing incoming requests, it takes as argument

@@ -30,9 +30,6 @@ ListItem* List_find(ListHead* head, ListItem* item);
 ListItem* List_insert(ListHead* head, ListItem* previous, ListItem* item);
 ListItem* List_detach(ListHead* head, ListItem* item);
 
-void MessageList_print(ListHead* head);
-void Remove_all_messages_from_list(ListHead list);
-void Add_message_to_list(ListHead head, int header, char* content, char* to, char* from);
 
 //######################################################################################################################
 
@@ -68,18 +65,25 @@ typedef struct {
 #define MESSAGE_SIZE (int)sizeof(Message)
 
 void Message_init(Message* m,int header,char* from,char* to,void* content,int content_size);
+void MessageList_print(ListHead* head);
+void Remove_all_messages_from_list(ListHead* list);
+void Add_message_to_list(ListHead* head, int header, char* content, char* from, char* to);
 
 //######################################################################################################################
 
 //*CHAT*
 
 typedef struct {
-    User* user1;
-    User* user2;
-    ListHead list_msg;
+    char user1[MAX_CREDENTIAL];
+    char user2[MAX_CREDENTIAL];
+    ListHead* list_msg;
 } Chat;
 
 #define CHAT_SIZE (int)sizeof(Chat)
+
+void Chat_create(Chat* chat,char user1[MAX_CREDENTIAL], char user2[MAX_CREDENTIAL], ListHead* list);
+void Chat_destroy(Chat* chat);
+void Chat_print(Chat* chat);
 
 //######################################################################################################################
 
@@ -87,8 +91,8 @@ typedef struct {
 
 //FC It represents the user while he/she is online, the chat in which he/she is and his/her IP address
 typedef struct {
-    User* user;
-    char* ipaddr; //a string "10.0.0.1" for the IPv4 address
+    char username[MAX_CREDENTIAL]; //FC taken from the message sent by the client to the server to enter a Chat
+    char ipaddr[15]; //FC a string "10.0.0.1" for the IPv4 address taken from the sockaddr_in struct got when the server receives a message from a client who enters a Chat
     Chat* chat;
 } UserOnline;
 
@@ -97,7 +101,8 @@ typedef struct {
 
 //######################################################################################################################
 
-//*LISTS: MESSAGE, CHAT and USERONLINE*
+//*LIST ITEMS: MESSAGE, CHAT and USERONLINE*
+// FC We will use these items in ListHead to create different lists but with the same structure through polymorphism
 
 typedef struct MessageListItem{
   ListItem list;
