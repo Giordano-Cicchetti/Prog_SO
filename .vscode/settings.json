@@ -9,5 +9,10 @@
         "binary_file_search.h": "c",
         "errno.h": "c"
     },
-    "C_Cpp.errorSquiggles": "Enabled"
+    "C_Cpp.errorSquiggles": "Enabled",
+    
+    "files.exclude": {
+        "**/*.dSYM": true,
+    },
 }
+

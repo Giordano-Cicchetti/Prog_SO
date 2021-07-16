@@ -10,7 +10,7 @@
 #include "common.h"
 
 
-// GC printing User
+//GC printing User
 void User_print(int fd,int num_users){
   User u ;
   int i=num_users-1; // read in reverse order!!
@@ -34,16 +34,16 @@ void User_all_usernames(int fd,char* buf,int num_users) {
 
 //GC searching a user in the file
 int normalFileSearch(int fd, void* item, int item_size, CompareFn compare){
-  //1 we get the size of the file
+  //GC first we get the size of the file
   struct stat stats;
   fstat(fd, &stats);
 
-  // from the size, we determine the number of records
+  //GC from the size, we determine the number of records
   int size=stats.st_size;
   if(DEBUG) printf("size: %d, item_size: %d\n", size, item_size);
-  //printf("the file has size %d\n", (int)size);
+  
 
-  //we determine the number of records
+  //GC we determine the number of records and read from the right position 
   int num_records=size/item_size;
   assert(!(size%item_size));
 

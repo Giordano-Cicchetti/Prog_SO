@@ -1,4 +1,5 @@
 // FC escapes for coloring text in C language
+
 //Regular text
 #define BLK "\e[0;30m"
 #define RED "\e[0;31m"
@@ -74,5 +75,7 @@
 #define MOVE_LEFT "\033[40D"
 #define CLEAR_SCREEN "\033[2J"
 //Reset
-#define reset "\e[0m"
 #define RESET "\033[0m"
+//GC added by us
+#define reset "\e[0m"
+

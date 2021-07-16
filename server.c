@@ -17,54 +17,56 @@
 #include "structures.h"
 #include "binary_file_search.h"
 
-// FC lists used by the server to handle users online and chats created during its lifetime
+//FC lists used by the server to handle users online and chats created during its lifetime
 ListHead chat_list;
 ListHead usersonline_list;
 
-// GC file descriptor for users' file
+//GC file descriptor for users' file
 int fd;
-// GC number of users registered
+//GC number of users registered
 int num_users;
 
-/* FC method for processing incoming requests, it takes as argument
+//*************************************************************//
+
+/*FC method for processing incoming requests, it takes as argument
  the socket descriptor for the incoming connection */
 void* connection_handler(int socket_desc) {
 
-    // FC values returned by the syscalls called in the following part, bytes read and sent every time something is arrived
+    //FC values returned by the syscalls called in the following part, bytes read and sent every time something is arrived
     int ret, recv_bytes, bytes_sent;
 
-    // FC buffer 
+    //FC buffer 
     char buf[1024];
     
-    // FC size of the buffer
+    //FC size of the buffer
     size_t buf_len = sizeof(buf);
    
-    // FC setting buffer array with all zeros
+    //FC setting buffer array with all zeros
     memset(buf,0,buf_len);
 
-    // FC quit command and its size
+    //FC quit command and its size
     char* quit_command = SERVER_COMMAND;
     size_t quit_command_len = strlen(quit_command);
 
-    // FC initialize the sockaddr_in structure of the client that is writing to the server
+    //FC initialize the sockaddr_in structure of the client that is writing to the server
     struct sockaddr_in client_addr;
 
-    // FC size of the struct sockaddr_in of the client
+    //FC size of the struct sockaddr_in of the client
     int sockaddr_len = sizeof(client_addr); 
 
-    // FC echo loop
+    //FC echo loop
     while (1) {
 
-        // FC setting buffer array with all zeros
+        //FC setting buffer array with all zeros
         memset(buf,0,buf_len);
 
-        /* FC read message from clients, we do not deal 
+        /*FC read message from clients, we do not deal 
            with partially sent messages since it is UDP protocol */
         
-        // FC bytes received
+        //FC bytes received
         recv_bytes = 0;
         
-        // FC receiving
+        //FC receiving
         do {
             printf(BGRN "Receiving.. \n" reset);
             recv_bytes = recvfrom(socket_desc, buf, buf_len, 0, (struct sockaddr *) &client_addr, (socklen_t *) &sockaddr_len);
@@ -87,11 +89,9 @@ void* connection_handler(int socket_desc) {
 
 
 
-        // FC debugging
+        //FC debugging
         if (DEBUG) {
-            
-            fprintf(stderr, "Received command of %d bytes...\n", recv_bytes);
-            
+                fprintf(stderr, "Received command of %d bytes...\n", recv_bytes);
         }
 
         //GC I see the incoming bytes as a message struct
@@ -129,6 +129,7 @@ void* connection_handler(int socket_desc) {
             if(DEBUG)User_print(fd,num_users);
             continue;
         }
+
         //GC if the message is a request of username validation do some other stuff
         else if(header==PREREGISTRATION){
             User* u = (User*) message->content;
@@ -157,6 +158,7 @@ void* connection_handler(int socket_desc) {
             continue;
 
         }
+        
         //GC if the message is a request of registration do some other stuff
         else if(header==REGISTRATION){
             User* u = (User*) message->content;
@@ -168,7 +170,7 @@ void* connection_handler(int socket_desc) {
                 Message_init(&m,REGISTRATION_KO,NULL,NULL,"error in registration",22);
                 printf(BRED "Error in registration \n" reset );
             }
-            //else send REGISTRATION_OK
+            //GC else send REGISTRATION_OK
             else{
                 Message_init(&m,REGISTRATION_OK,NULL,NULL,"registration ok",16);
                 printf(BRED "Server: %s registration ok \n" reset ,u->username);
@@ -187,10 +189,10 @@ void* connection_handler(int socket_desc) {
 
         }
 
-        // FC receive message from client and print it as green bold text
+        //FC receive message from client and print it as green bold text
         printf(BRED "Client: %s \n" reset ,buf);
 
-        /* FC only if the bytes received are equal to the length of the "quit" command the comparison is made,
+        /*FC only if the bytes received are equal to the length of the "quit" command the comparison is made,
         in that case no sending is needed so we can restart the loop */
         if (recv_bytes == quit_command_len && !memcmp(buf, quit_command, quit_command_len)){
 
@@ -200,18 +202,18 @@ void* connection_handler(int socket_desc) {
          }
         printf(" header %d \n from %s to %s \n",((Message*)buf)->header,((Message*)buf)->from,((Message*)buf)->to);
         memset(buf,0,buf_len);
-         fprintf(stderr, BGRN  "Server:");
-        // FC read a line from stdin, fgets() reads up to sizeof(buf)-1 bytes and on success returns the buf passed as argument
+        fprintf(stderr, BGRN  "Server:");
+        //FC read a line from stdin, fgets() reads up to sizeof(buf)-1 bytes and on success returns the buf passed as argument
         if (fgets(buf, sizeof(buf), stdin) != (char*)buf) {
             fprintf(stderr, "Error while reading from stdin, exiting...\n");
             exit(EXIT_FAILURE);
         }
 
         printf("%s\n",buf);
-         // FC length of the message
+         //FC length of the message
         int msg_len = strlen(buf);
 
-		// FC send message to server, sendto() with flags = 0 is equivalent to write() to a descriptor
+		//FC send message to server, sendto() with flags = 0 is equivalent to write() with a descriptor
         bytes_sent=0;
         while ( bytes_sent < msg_len) {
             ret = sendto(socket_desc, buf, msg_len, 0, (struct sockaddr*) &client_addr, sizeof(struct sockaddr_in));
@@ -222,14 +224,14 @@ void* connection_handler(int socket_desc) {
 
     }
 
-    // FC after the loop ends (now it is never), close the socket and release unused resources
+    //FC after the loop ends (now it is never), close the socket and release unused resources
     ret = close(socket_desc);
     if (ret < 0) handle_error("Cannot close socket for incoming connection");
 
-    // FC debugging
+    //FC debugging
     if (DEBUG) fprintf(stderr, "Socket closed...\n");
 
-    // FC end of the handler function
+    //FC end of the handler function
     return NULL;
 
 }
@@ -238,7 +240,7 @@ void* connection_handler(int socket_desc) {
 /* ########################################################################################################################## */
     
 
-// FC main
+//FC main
 int main(int argc, char* argv[]) {
 
     //GC open the binary file with the users inside 
@@ -253,78 +255,80 @@ int main(int argc, char* argv[]) {
     num_users=size/USER_SIZE;
     assert(!(size%USER_SIZE));
 
+////////TRIAL////////////
+    //... trying users usernames , and strtok
     char dummy[num_users*MAX_CREDENTIAL];
     User_all_usernames(fd,dummy,num_users);
     printf("users:\n%s",dummy);
     const char s[1] = "\n";
     char *token;
 
-    /* get the first token */
+    /*.... get the first token */
     token = strtok(dummy, s);
 
-    /* walk through other tokens */
+    /*.... walk through other tokens */
     while( token != NULL ) {
     printf( "%s\n", token );
 
     token = strtok(NULL, s);
     }
+/////ENDOFTRIAL////////////
 
-
-    // FC values returned by the syscalls called in the following part
+    //FC values returned by the syscalls called in the following part
     int ret;
 
-    // FC socket descriptor
+    //FC socket descriptor
     int socket_desc;
 
-    // FC initialize the sockaddr_in structure of the server
+    //FC initialize the sockaddr_in structure of the server
     struct sockaddr_in server_addr = {0};
 
-    // FC size of the struct sockaddr_in
+    //FC size of the struct sockaddr_in
     int sockaddr_len = sizeof(struct sockaddr_in); 
 
-    /* FC create a socket for listening using AF_INET (IPV4) protocol (network layer) 
+    /*FC create a socket for listening using AF_INET (IPV4) protocol (network layer) 
     and SOCK_DGRAM type for UDP protocol (transport layer) */
     socket_desc = socket(AF_INET, SOCK_DGRAM, 0);
     if (socket_desc < 0)
         handle_error("Could not create socket");
 
-    // FC debugging
+    //FC debugging
     if (DEBUG) fprintf(stderr, "Socket created...\n");
 
-    /* FC we enable SO_REUSEADDR to quickly restart our server after a crash:
+    /*FC we enable SO_REUSEADDR to quickly restart our server after a crash:
     for a temporary binding of the address in "bind" call*/
     int reuseaddr_opt = 1;
     ret = setsockopt(socket_desc, SOL_SOCKET, SO_REUSEADDR, &reuseaddr_opt, sizeof(reuseaddr_opt));
     if (ret < 0)
         handle_error("Cannot set SO_REUSEADDR option");
 
-    // FC set server address and bind it to the socket
+    //FC set server address and bind it to the socket
     server_addr.sin_addr.s_addr = INADDR_ANY; // FC we want to accept connections from any interface
     server_addr.sin_family      = AF_INET; // FC IPV4 addresses
     server_addr.sin_port        = htons(SERVER_PORT); // FC don't forget about network byte order! using htons() method
 
-    // FC bind address to socket
+    //FC bind address to socket
     ret = bind(socket_desc, (struct sockaddr*) &server_addr, sockaddr_len);
     if (ret < 0)
         handle_error("Cannot bind address to socket");
 
-    // FC debugging
+    //FC debugging
     if (DEBUG) fprintf(stderr, "Binded address to socket...\n");
 
-    // FC loop to handle incoming connections (sequentially)
+    //FC loop to handle incoming connections (sequentially)
     while (1) {
         
-		// FC ! remember : it is not required to accept an incoming connection in UDP protocol
+		//FC ! remember : it is not required to accept an incoming connection in UDP protocol
 
-        // FC debugging
+        //FC debugging
         if (DEBUG) fprintf(stderr, "Opening connection handler...\n");
 
-        // FC handler of each connection
+        //FC handler of each connection
         connection_handler(socket_desc);
 
     }
 
-    // FC this will never be executed
+    //FC this will never be executed
     close(fd);
     exit(EXIT_SUCCESS); 
 }

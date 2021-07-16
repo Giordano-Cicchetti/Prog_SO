@@ -20,7 +20,7 @@
 #define MAX_NUM_ITEMS 5
 
 
-// FC to test the functions created during the development
+//FC to test the functions created during the development
 int main(int argc, char** argv) {
   
   ListHead list; 
@@ -30,13 +30,16 @@ int main(int argc, char** argv) {
   Add_message_to_list(&list,3,"BELGIO","jack","feffo");
   printf(BWHT "size %d \n" reset,list.size);
   Remove_all_messages_from_list(&list);
-  printf(BWHT "size %d \n" reset,list.size);
+  printf(BWHT "size %d \n \n" reset,list.size);
 ////////////////////
 
-  ListHead list_msg1;
+
+//FC how to create a chat: create a list of message,initialize it and then use the Add_chat_to_list function
+
+  ListHead list_msg1; 
   ListHead list_msg2;
   ListHead list_chat;
-  List_init(&list_msg1);
+  List_init(&list_msg1); //FC remember to initialize a list before using it
   List_init(&list_chat);
   List_init(&list_msg2);
 
@@ -46,11 +49,11 @@ int main(int argc, char** argv) {
   char user3[MAX_CREDENTIAL]="jacopo";
   char user4[MAX_CREDENTIAL]="filippo";
 
-  Add_chat_to_list(&list_chat, user1, user2, &list_msg1);  //FC It prints the Chat that is empty at the beginning
+  Add_chat_to_list(&list_chat, user1, user2, &list_msg1);  //FC it prints the Chat that is empty at the beginning
   Add_chat_to_list(&list_chat, user3, user4, &list_msg2); 
 
 
-  Add_message_to_list(&list_msg1,5,"BERRETTINI","feffo","gio"); // FC Then It fills the Chat
+  Add_message_to_list(&list_msg1,5,"BERRETTINI","feffo","gio"); //FC then it fills the Chat
   Add_message_to_list(&list_msg1,5,"DJOKOVIC","gio","feffo");
   Add_message_to_list(&list_msg1,5,"DJOKOVIC","feffo","gio");
   Add_message_to_list(&list_msg1,5,"DJOKOVIC","gio","feffo");
@@ -62,6 +65,9 @@ int main(int argc, char** argv) {
 
   Chat_list_print(&list_chat);
   
+  //FC to print a single chat : Chat_print(((ChatListItem*)(list_chat.first))->chat);
+
+
   Remove_all_chats_from_list(&list_chat);
 
 }
