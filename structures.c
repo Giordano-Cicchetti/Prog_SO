@@ -41,6 +41,53 @@ int User_compare_only_username(void* a, void* b){
   int cmp1=strcmp(ua->username, ub->username);
   return cmp1;
 }
+// GC given a list of users, ask the user a username and check if it's avalaible
+void checkregistereduser(char* listusers,char* interlocutor,char* current_user){
+  char user_in[MAX_CREDENTIAL];
+  int user_len=0;
+  char* quit=SERVER_COMMAND;
+  int quit_len=strlen(quit);
+  const char s = '\n';
+  char list[strlen(listusers)+1];
+  
+  while(1){
+    //GC take the username
+    strcpy(list,listusers); 
+    printf("Per continuare bisogna inserire lo username dell'utente con cui si desidera parlare.\n");
+    printf("Scegli tra questi user registrati:\n%s",listusers);
+    printf("Inserire un nickname: ");
+    scanf("%s",user_in);
+    while(getchar()!='\n');
+    user_len = strlen(user_in);
+    if (user_len == quit_len -1  && !memcmp(user_in, quit, quit_len -1)){
+      if (DEBUG) fprintf(stderr, "Sent QUIT command ...\n");
+      strcpy(interlocutor, quit);
+      return ;
+    }
+    if(!strcmp(current_user,user_in)){
+      printf("scegli un utente diverso da te stesso \n");
+      continue;
+    }
+
+    char *token;
+
+    /*.... get the first token */
+    token = strtok(list, &s);
+    
+    /*.... walk through other tokens */
+    while( token != NULL ) {
+      
+      if(strcmp(user_in,token)==0){
+        
+        strcpy(interlocutor, user_in);
+        return ;
+      }
+      token = strtok(NULL, &s);
+    }
+    printf("Nessun username trovato \n");
+  }
+
+}
 
 //######################################################################################################################
 
@@ -338,7 +385,7 @@ void UserOnline_create(UserOnline* useronline, char username[MAX_CREDENTIAL], ch
 //FC printing a user online with infos
 void UserOnline_print(UserOnline* useronline){
   char otheruser[MAX_CREDENTIAL];
-  if (strcmp((useronline->chat)->user1, useronline->username)){
+  if (!strcmp((useronline->chat)->user1, useronline->username)){
     strcpy(otheruser, useronline->chat->user2);
   }
   else{
@@ -453,7 +500,6 @@ char* Give_useronline_IP(ListHead* useronlinelist, char username[MAX_CREDENTIAL]
   boolean checkregistereduser(char* listusers){
     
   1)scanf per prendere input un username
-  2)controllo se l'input è un nome (no numeri o altro)  senno torna al passo 1 e richiede input 
   3)arrivati qua significa che è un nome  e allora controllo che sia fra quelli in listusers
   4)se non lo è rivai al passo 1
   5)se lo è allora ridai true e termina la funzione

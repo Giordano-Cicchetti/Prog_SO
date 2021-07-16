@@ -50,6 +50,9 @@ void User_init(User* dest,char* username,char* password);
 int User_compare(void* a, void* b);
 int User_compare_only_username(void* a, void* b);
 
+// GC given a list of users, ask the user a username and check if it's avalaible
+void checkregistereduser(char* listusers,char* interlocutor,char* current_user);
+
 //######################################################################################################################
 
 //*MESSAGE*
@@ -139,11 +142,3 @@ typedef struct UserOnlineListItem{
 
 //######################################################################################################################
 
-//*RECEIVER_THREAD_ARG*
- 
-//GC struct for arguments (socket descriptor) of the receiving thread of the client
-typedef struct handler_args_s{
-    int socket_desc;
-} handler_args_t;
-
-//######################################################################################################################

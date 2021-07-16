@@ -188,6 +188,22 @@ void* connection_handler(int socket_desc) {
             continue;
 
         }
+        else if(header==USER_LIST_REQUEST){
+            char dummy[num_users*MAX_CREDENTIAL];
+            User_all_usernames(fd,dummy,num_users);
+            Message_init(&m,USER_LIST_RESPONSE,NULL,NULL,(void*)dummy,sizeof(dummy));
+            bytes_sent=0;
+            while ( bytes_sent < MESSAGE_SIZE) {
+                ret = sendto(socket_desc, &m, MESSAGE_SIZE, 0, (struct sockaddr*) &client_addr, sizeof(struct sockaddr_in));
+                if (ret == -1 && errno == EINTR) continue;
+                if (ret == -1) handle_error("Cannot write to the socket");
+                bytes_sent = ret;
+            }
+            printf("sent the user's list to the client \n");
+            continue;
+        }
+        
+
 
         //FC receive message from client and print it as green bold text
         printf(BRED "Client: %s \n" reset ,buf);

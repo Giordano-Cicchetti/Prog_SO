@@ -15,6 +15,8 @@
 #include "ANSI-color-codes.h"
 #include <pthread.h>
 
+char user[MAX_CREDENTIAL];
+
 //GC receiving thread 
 void * receiver_handler(void *arg) {
 
@@ -88,6 +90,7 @@ int main(int argc, char* argv[]) {
     Message m;
     Message* message;
     
+    
     char* username = (char*)malloc(sizeof(char)*MAX_CREDENTIAL);
     char* password = (char*)malloc(sizeof(char)*MAX_CREDENTIAL);
     
@@ -146,6 +149,7 @@ int main(int argc, char* argv[]) {
                 printf("sei un utente loggato \n");
                 //GC this clear the stdin
                 while(getchar()!='\n');
+                strcpy(user,username);
                 break;
             }
             //GC else if username or password is incorrect continue the loop
@@ -241,7 +245,7 @@ int main(int argc, char* argv[]) {
                     printf("errore aggiunta user \n");
                     return 1;
                 }
-                
+                strcpy(user,username);
                 //GC this clear the stdin
                 while(getchar()!='\n');
                 break;
@@ -254,6 +258,38 @@ int main(int argc, char* argv[]) {
 
     free(username);
     free(password);
+
+    //choose the interlocutor
+    Message_init(&m,USER_LIST_REQUEST,NULL,NULL,NULL,0);
+    bytes_sent=0;
+    while ( bytes_sent < MESSAGE_SIZE) {
+        ret = sendto(socket_desc, &m , MESSAGE_SIZE, 0, (struct sockaddr*) &server_addr, sizeof(struct sockaddr_in));
+        if (ret == -1 && errno == EINTR) continue;
+        if (ret == -1) handle_error("Cannot write to the socket");
+        bytes_sent = ret;
+    }
+    //GC Wait for response from the server
+    memset(buf,0,buf_len);
+    recv_bytes = 0;
+    do {
+        ret = recvfrom(socket_desc, buf, buf_len, 0, NULL, NULL);
+        if (ret == -1 && errno == EINTR) continue;
+        if (ret == -1) handle_error("Cannot read from the socket");
+        if (ret == 0) break;
+        recv_bytes = ret;
+
+    } while ( recv_bytes<=0 );
+
+    message=(Message*)buf;
+
+    int response=message->header;
+    char interlocutor[MAX_CREDENTIAL];
+    if(response==USER_LIST_RESPONSE){
+        char* list=message->content;
+        checkregistereduser(list,interlocutor,user);
+    }
+    printf("interlocutor is:%s \n",interlocutor);
+    if(!strcmp(interlocutor,SERVER_COMMAND)) goto END;
     
 
     //GC create a thread to handler receiving messages
@@ -314,7 +350,8 @@ int main(int argc, char* argv[]) {
 
 
     //FC after the loop ends for a "QUIT\n", close the socket and release unused resources
-    ret = close(socket_desc);
+
+END: ret = close(socket_desc);
     if (ret < 0) handle_error("Cannot close the socket");
 
     //FC debugging

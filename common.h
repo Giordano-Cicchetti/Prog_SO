@@ -35,6 +35,9 @@
 #define CHAT_OK             13 //sent from the server when the chat is created
 #define CHAT_KO             14 //sent from the client when asks to leave the chat
 
+#define USER_LIST_REQUEST   15
+#define USER_LIST_RESPONSE  16
+
 //GC to compare Users, defined in "structures.c" as User_compare and passed in "server.c" to the NormalFileSearch operation
 typedef int (*CompareFn)(void* v1, void* v2);
 
