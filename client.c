@@ -8,17 +8,40 @@
 #include <arpa/inet.h>  // htons() and inet_addr()
 #include <netinet/in.h> // struct sockaddr_in
 #include <sys/socket.h>
+#include <pthread.h> // threads
 #include <assert.h>
 #include <fcntl.h>
+#include <signal.h>
+
 #include "common.h"
 #include "structures.h"
 #include "ANSI-color-codes.h"
-#include <pthread.h>
 
+//FC variables even initialized for handling the socket of the client and of the server
+int socket_desc;
+struct sockaddr_in server_addr = {0};
+
+//FC current user
 char user[MAX_CREDENTIAL];
 
+//FC handler for exit with SIGHUP or SIGINT (sigaction)
+void quit_handler(){
+    
+    int ret = close(socket_desc);
+    if (ret < 0) handle_error("Cannot close the socket");
+
+    //FC debugging
+    if (DEBUG) printf(BGRN "\n\nSocket closed...\n");
+
+    //FC exiting
+    printf(BGRN "\n\nExiting...\n");
+
+    //FC exiting with success
+    exit(EXIT_SUCCESS);
+}
+
 //GC receiving thread : it must only print the messages (HEADER:9) received
-void * receiver_handler(void *arg) {
+void* receiver_handler(void *arg) {
 
     int socket_desc = *((int*) arg);
     
@@ -46,7 +69,7 @@ void * receiver_handler(void *arg) {
         Message * m=(Message*)buf;
 
         //FC debugging
-        if (DEBUG) fprintf(stderr, "Received answer of %d bytes...\n",recv_bytes);
+        if (DEBUG) printf("Received answer of %d bytes...\n",recv_bytes);
 
         //FC the message from the server arrived is printed
         if(strcmp(user,m->from)==0){
@@ -65,13 +88,16 @@ void * receiver_handler(void *arg) {
 
 //FC main
 int main(int argc, char* argv[]) {
+    
+  //FC install CTRL-C (SIGINT) signal handler and kill terminal handler (SIGHUP)
+    struct sigaction action;
+    memset(&action, 0, sizeof(action));
+    action.sa_handler = &quit_handler;
+    sigaction(SIGINT, &action, NULL);
+    sigaction(SIGHUP, &action, NULL);
 
     //FC values returned by the syscalls called in the following part, bytes read and sent every time something is arrived
-    int ret,bytes_sent,recv_bytes;
-
-    //FC variables even initialized for handling the socket of the client and of the server
-    int socket_desc;
-    struct sockaddr_in server_addr = {0}; 
+    int ret,bytes_sent,recv_bytes;  
 
     /*FC create a socket for contacting the server using IPV4 and UDP protocol */
     socket_desc = socket(AF_INET, SOCK_DGRAM, 0);
@@ -97,7 +123,6 @@ int main(int argc, char* argv[]) {
     User u;
     Message m;
     Message* message;
-
 
     //##############################1STPHASE#######################################################################################
 
@@ -311,7 +336,7 @@ int main(int argc, char* argv[]) {
         Check_registered_user(list,interlocutor,user);
     }
     printf(BRED "\nYour interlocutor is: %s \n",interlocutor);
-    if(!strcmp(interlocutor,SERVER_COMMAND)) goto END; //FC goto is ok since we have only one end-point
+    if(!strcmp(interlocutor,SERVER_COMMAND)) quit_handler(); //FC goto is ok since we have only one end-point
 
 
     //FC request for a chat between user and interlocutor choosen at the previous point
@@ -324,7 +349,7 @@ int main(int argc, char* argv[]) {
         bytes_sent = ret;
     }
 
-    //FC wait for response from the server CHAT_OK or CHAT_KO if the chat already exists it will send the list of messages
+    //FC wait for response from the server CHAT_OK
     memset(buf,0,buf_len);
     recv_bytes = 0;
     do {
@@ -344,17 +369,10 @@ int main(int argc, char* argv[]) {
         //FC debugging
         if (DEBUG) fprintf(stderr, "The chat between you and %s has been successfully created in our server \n", interlocutor);
     }
-    else if(response==CHAT_KO){
-        if (DEBUG) fprintf(stderr, "The chat between you and %s has been successfully created in our server \n", interlocutor);
-        exit(0);
+    else{
+    //FC case 2: EXIT
+        quit_handler();
     }
-
-    
-
-
-
-
-
 
 //##############################ENDOF2NDPHASE#######################################################################################
 
@@ -408,7 +426,7 @@ int main(int argc, char* argv[]) {
 		if (msg_len == quit_command_len && !memcmp(buf, quit_command, quit_command_len)){
 
             if (DEBUG) fprintf(stderr, "Sent QUIT command ...\n");
-            break;
+            quit_handler();
 
         }
         memset(buf,0,buf_len);
@@ -420,7 +438,7 @@ int main(int argc, char* argv[]) {
 
 //FC after the loop ends for a "QUIT\n", close the socket and release unused resources
 
-END: ret = close(socket_desc);
+    ret = close(socket_desc);
     if (ret < 0) handle_error("Cannot close the socket");
 
     //FC debugging

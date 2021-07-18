@@ -69,7 +69,7 @@ void Check_registered_user(char* listusers,char* interlocutor,char* current_user
       return;
     }
     if(!strcmp(current_user,user_in)){
-      printf(BRED "You can't talk with yourself!\n");
+      printf(BRED "\nYou can't talk with yourself!\n\n");
       continue;
     }
     char *token;

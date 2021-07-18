@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <assert.h>
 #include <fcntl.h>
+#include <signal.h>
 
 #include "common.h"
 #include "ANSI-color-codes.h"
@@ -26,11 +27,37 @@ int fd;
 //GC number of users registered
 int num_users;
 
+//FC socket descriptor
+int socket_desc;
+
+//FC handler for exit with SIGHUP or SIGINT (sigaction)
+void quit_handler(){
+    
+    //FC closing the file
+
+    //*******  binaryFileWrite(fd,"ciao",5,0);  ******* TRIAL FOR SIGNAL HANDLER SIGHUP
+    binaryFileWrite(fd,"ciao",5,0);
+    close(fd);
+    
+    int ret = close(socket_desc);
+    if (ret < 0) handle_error("Cannot close the socket");
+
+    //FC debugging
+    if (DEBUG) printf(BGRN "\n\nSocket closed...\n");
+
+    //FC exiting
+    printf(BGRN "\n\nExiting...\n");
+
+    //FC exiting with success
+    exit(EXIT_SUCCESS);
+}
+
 //##############################SERVER_HANDLER############################################################################################
 
 /*FC method for processing incoming requests, it takes as argument
  the socket descriptor for the incoming connection */
 void* connection_handler(int socket_desc) {
+    
     printf(BMAG "\nServer of the Private Chat!\n\n");
     //FC values returned by the syscalls called in the following part, bytes read and sent every time something is arrived
     int ret, recv_bytes, bytes_sent;
@@ -118,7 +145,7 @@ void* connection_handler(int socket_desc) {
             if (pos >= 0 &&  present==NULL){
                 Message_init(&m,LOGIN_OK,NULL,NULL,"login accept",13);
                 printf(BRED "\n%s " reset ,u->username);
-                printf(BWHT "Login accepted\n" reset);
+                printf(BWHT "Login accepted\n\n" reset);
             }
             //GC else send LOGIN_KO if is already online or if is not in the file of registered users
             else if (pos >= 0 && present != NULL){
@@ -220,7 +247,10 @@ void* connection_handler(int socket_desc) {
                 if (ret == -1) handle_error("Cannot write to the socket");
                 bytes_sent = ret;
             }
-            printf(BWHT "\nSent the user's list to the client \n");
+
+            printf(BWHT "\nA client is asking for the users' list\n" reset);
+            printf(BWHT "\nSent the user's list to the client\n");
+
             continue;
         }
         
@@ -238,18 +268,22 @@ void* connection_handler(int socket_desc) {
             char* ip=NULL;
             ip = inet_ntoa(client_addr.sin_addr); //FC return the IP
         
+
             //FC chat is present: sending the previous message
             if (chat!=NULL){
-                printf("prova1");
+
+                printf("\nChat already existing..\n");
                 //FC creating the user online for user : if he/she is already online would not be here (login failed)
                 Add_useronline_to_list(&usersonline_list,chat,user, ip);
 
+                //*********************************************************
                 //GC dummies messages 
                 for(int i=0;i<10;i++){
                     Add_message_to_list(chat->list_msg,NORMAL_MESSAGE,"user",user,interlocutor);
                     Add_message_to_list(chat->list_msg,NORMAL_MESSAGE,"interl",interlocutor,user);
                 }
-                
+                //*********************************************************
+
                 //FC printing useronline list and their chat
                 UserOnline_list_print(&usersonline_list);
                 Chat_print(chat);
@@ -269,9 +303,9 @@ void* connection_handler(int socket_desc) {
                 continue;
             }
 
-            else { //FC chat is NOT present
+            else{ //FC chat is NOT present
 
-                printf("prova2");
+                printf("\nCreating chat..\n");
                 ListHead* list_msg=(ListHead*)malloc(sizeof(ListHead)); 
                 List_init(list_msg);
                 Add_chat_to_list(&chat_list, user, interlocutor, list_msg); 
@@ -280,10 +314,10 @@ void* connection_handler(int socket_desc) {
 
                 //FC creating the user online for user : if he/she is already online would not be here (login failed)
                 Add_useronline_to_list(&usersonline_list, user_chat, user, ip);
-                printf("gggggg");
+                
                  //FC printing useronline list and all chats
                 UserOnline_list_print(&usersonline_list);
-                printf("prova10");
+                
                 Chat_list_print(&chat_list);
 
                 Message_init(&m,CHAT_OK,NULL,NULL,NULL,0);
@@ -381,8 +415,12 @@ int main(int argc, char* argv[]) {
     //FC values returned by the syscalls called in the following part
     int ret;
 
-    //FC socket descriptor
-    int socket_desc;
+    //FC install CTRL-C (SIGINT) signal handler and kill terminal handler (SIGHUP)
+    struct sigaction action;
+    memset(&action, 0, sizeof(action));
+    action.sa_handler = &quit_handler;
+    sigaction(SIGINT, &action, NULL);
+    sigaction(SIGHUP, &action, NULL);
 
     //FC initialize the sockaddr_in structure of the server
     struct sockaddr_in server_addr = {0};
