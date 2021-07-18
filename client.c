@@ -27,7 +27,7 @@ void * receiver_handler(void *arg) {
     int recv_bytes;
     int ret;
     
-
+    
     while(1){
         
         memset(buf,0,buf_len);
@@ -42,11 +42,19 @@ void * receiver_handler(void *arg) {
 
 	    } while ( recv_bytes<=0 );
         buf[recv_bytes-1]='\0';
+
+        Message * m=(Message*)buf;
+
         //FC debugging
         if (DEBUG) fprintf(stderr, "Received answer of %d bytes...\n",recv_bytes);
 
         //FC the message from the server arrived is printed
-        printf(BRED MOVE_RIGHT "%s\e[1;32m\n", buf); 
+        if(strcmp(user,m->from)==0){
+            printf(BGRN "%s\e[1;32m\n", m->content);
+        }
+        else if(strcmp(user,m->to)==0){
+            printf(BRED MOVE_RIGHT "%s\e[1;32m\n", m->content); 
+        }
 
     
 
@@ -333,31 +341,16 @@ int main(int argc, char* argv[]) {
 
     //FC case 1: Chat created by the server (CHAT_OK)
     if (response==CHAT_OK){
-        
         //FC debugging
         if (DEBUG) fprintf(stderr, "The chat between you and %s has been successfully created in our server \n", interlocutor);
     }
-
-    //FC case 2: Chat already exists (CHAT_KO)
-    else {
-        
-        memset(buf,0,buf_len);
-        recv_bytes = 0;
-        do { 
-            //qua leggere tutti i messaggi inviati!!!
-            ret = recvfrom(socket_desc, buf, buf_len, 0, NULL, NULL);
-            if (ret == -1 && errno == EINTR) continue;
-            if (ret == -1) handle_error("Cannot read from the socket");
-            if (ret == 0) break;
-            recv_bytes = ret;
-
-    } while ( recv_bytes<=0 );
-    
-    message=(Message*)buf;
-    response=message->header;
-    
-    
+    else if(response==CHAT_KO){
+        if (DEBUG) fprintf(stderr, "The chat between you and %s has been successfully created in our server \n", interlocutor);
+        exit(0);
     }
+
+    
+
 
 
 

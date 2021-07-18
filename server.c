@@ -243,12 +243,18 @@ void* connection_handler(int socket_desc) {
                 printf("prova1");
                 //FC creating the user online for user : if he/she is already online would not be here (login failed)
                 Add_useronline_to_list(&usersonline_list,chat,user, ip);
+
+                //GC dummies messages 
+                for(int i=0;i<10;i++){
+                    Add_message_to_list(chat->list_msg,NORMAL_MESSAGE,"user",user,interlocutor);
+                    Add_message_to_list(chat->list_msg,NORMAL_MESSAGE,"interl",interlocutor,user);
+                }
                 
                 //FC printing useronline list and their chat
                 UserOnline_list_print(&usersonline_list);
                 Chat_print(chat);
 
-                Message_init(&m,CHAT_KO,NULL,NULL,NULL,0);
+                Message_init(&m,CHAT_OK,NULL,NULL,NULL,0);
                 bytes_sent=0;
                 while ( bytes_sent < MESSAGE_SIZE) {
                      ret = sendto(socket_desc, &m, MESSAGE_SIZE, 0, (struct sockaddr*) &client_addr, sizeof(struct sockaddr_in));
@@ -257,7 +263,8 @@ void* connection_handler(int socket_desc) {
                      bytes_sent = ret;
                 }
 
-                //invia tutti i messaggi della chat!!!
+                //GC send all messages in the list_msg to user
+                MessageList_send(chat->list_msg,socket_desc,&client_addr);
             
                 continue;
             }
@@ -265,9 +272,9 @@ void* connection_handler(int socket_desc) {
             else { //FC chat is NOT present
 
                 printf("prova2");
-                ListHead list_msg;
-                List_init(&list_msg);
-                Add_chat_to_list(&chat_list, user, interlocutor, &list_msg); 
+                ListHead* list_msg=(ListHead*)malloc(sizeof(ListHead)); 
+                List_init(list_msg);
+                Add_chat_to_list(&chat_list, user, interlocutor, list_msg); 
 
                 Chat* user_chat=Find_chat_by_username(&chat_list, user);
 
@@ -287,6 +294,7 @@ void* connection_handler(int socket_desc) {
                      if (ret == -1) handle_error("Cannot write to the socket");
                      bytes_sent = ret;
                 }
+                
                 continue;
             }
 

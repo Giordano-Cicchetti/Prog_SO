@@ -71,6 +71,7 @@ void Message_init(Message* m,int header,char* from,char* to,void* content,int co
 void MessageList_print(ListHead* head);
 void Remove_all_messages_from_list(ListHead* list);
 void Add_message_to_list(ListHead* head, int header, char* content, char* from, char* to);
+void MessageList_send(ListHead* head,int sd,void* client_addr);
 
 //######################################################################################################################
 

@@ -10,6 +10,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <arpa/inet.h>  // htons()
+#include <netinet/in.h> // struct sockaddr_in
+#include <sys/socket.h>
 
 //*USER*
 
@@ -168,6 +171,26 @@ void Remove_all_messages_from_list(ListHead* list){
   if(DEBUG)
      MessageList_print(list);
   }
+//GC FC send to the client all the messages in the chat
+void MessageList_send(ListHead* head,int sd,void* client_addr){
+  ListItem* aux=head->first;
+  int bytes_sent=0 , ret ;
+  while(aux){
+    MessageListItem* element = (MessageListItem*) aux;
+    Message* m= element->msg;
+    
+    bytes_sent=0;
+    while ( bytes_sent < MESSAGE_SIZE) {
+      ret = sendto(sd, m, MESSAGE_SIZE, 0, (struct sockaddr*) client_addr, sizeof(struct sockaddr_in));
+      if (ret == -1 && errno == EINTR) continue;
+      if (ret == -1) handle_error("Cannot write to the socket");
+      bytes_sent = ret;
+    }
+
+    aux=aux->next; 
+  }
+  
+}
 
 //######################################################################################################################
 
@@ -391,9 +414,10 @@ void UserOnline_print(UserOnline* useronline){
     strcpy(otheruser, useronline->chat->user1);
   }
   printf(BGRN "\nUser %s is online through this IP address: %s \nHe/She is talking with %s\n" reset, useronline->username, useronline->ipaddr, otheruser);
-  if(useronline->chat->list_msg != NULL)
+  if(useronline->chat->list_msg != NULL){
     printf(BRED "\nList of messages:\n");
     MessageList_print(useronline->chat->list_msg);  
+  }
 }
 
 //FC printing all users online in the list of the server
