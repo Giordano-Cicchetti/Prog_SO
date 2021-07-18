@@ -17,7 +17,7 @@
 
 char user[MAX_CREDENTIAL];
 
-//GC receiving thread 
+//GC receiving thread : it must only print the messages (HEADER:9) received
 void * receiver_handler(void *arg) {
 
     int socket_desc = *((int*) arg);
@@ -29,6 +29,7 @@ void * receiver_handler(void *arg) {
     
 
     while(1){
+        
         memset(buf,0,buf_len);
         //FC receive message from server, recvfrom() with flags = 0 is equivalent to read() from a descriptor
 	    recv_bytes = 0;
@@ -44,7 +45,7 @@ void * receiver_handler(void *arg) {
         //FC debugging
         if (DEBUG) fprintf(stderr, "Received answer of %d bytes...\n",recv_bytes);
 
-        //FC the message from the server is arrived
+        //FC the message from the server arrived is printed
         printf(BRED MOVE_RIGHT "%s\e[1;32m\n", buf); 
 
     
@@ -84,34 +85,35 @@ int main(int argc, char* argv[]) {
     int msg_len;
     memset(buf,0,buf_len);
 
-
-    //GC create the struct user and ask to the user if he want to sign_in or sign_up
+    //GC create the struct user and a struct for message sent and one for that read
     User u;
     Message m;
     Message* message;
-    
-    
+
+
+    //##############################1STPHASE#######################################################################################
+
     char* username = (char*)malloc(sizeof(char)*MAX_CREDENTIAL);
     char* password = (char*)malloc(sizeof(char)*MAX_CREDENTIAL);
-    
-    printf("Benvenuto nel programma di prova degli utenti! \n");
+
+    printf(BMAG "\nWelcome to the Private Chat!\n\n");
     while(1){
 
         memset(buf,0,buf_len);
-        printf("Sei già registrato?(Y/N) ");
+        printf(BGRN "Have you registered yet?(Y/N): ");
         char c = (char) getchar();
         while(getchar()!='\n');
 
         //GC if the user want to sign_in
         if(c=='Y' || c=='y'){
             //GC take the username
-            printf("\ninserisci il tuo nickname:  ");
+            printf(BBLU "\nInsert your nickname:  ");
             scanf("%s",username);
             //GC take the password
-            printf("\ninserisci la tua password:  ");
+            printf(BBLU "\nInsert your password:  ");
             scanf("%s",password);
 
-            printf("\nUsername:%s  Password:%s \n",username,password);
+            printf(BBLU "\nUsername:%s  Password:%s \n\n",username,password);
             //GC initialize the user struct
             User_init(&u, username , password );
 
@@ -146,15 +148,23 @@ int main(int argc, char* argv[]) {
 
             //GC if response is LOGIN_OK then quit the loop and go next
             if(response==LOGIN_OK) {
-                printf("sei un utente loggato \n");
+                printf(BRED "You are logged now! \n\n");
                 //GC this clear the stdin
                 while(getchar()!='\n');
                 strcpy(user,username);
                 break;
             }
-            //GC else if username or password is incorrect continue the loop
+            //GC else if username or password is incorrect or he/she is already online continue the loop
             else {
-                printf("username o password errata \n");
+                
+                if(strcmp(message->content, "login failed") == 0){
+                    printf("Username o Password errata \n");
+                }
+                
+                else{
+                    printf("Username already online \n");
+                }
+              
                 //GC this clear the stdin
                 while(getchar()!='\n');
                 continue;
@@ -165,12 +175,12 @@ int main(int argc, char* argv[]) {
         //GC if the user want to sign_up
         else if(c=='N' || c=='n'){
             //GC take the username
-            printf("Per continuare bisogna registrarsi.\nInserire un nickname:  ");
+            printf("You have to register to continue...\nInsert a nickname:  ");
             scanf("%s",username);
             //GC take the password
-            printf("\ninserisci una password:  ");
+            printf("\nInsert a password:  ");
             scanf("%s",password);
-            printf("\nUsername:%s  Password:%s \n",username,password);
+            printf("\nUsername: %s  Password: %s \n",username,password);
             //GC initialize the user struct
             User_init(&u, username , password );
             
@@ -203,7 +213,7 @@ int main(int argc, char* argv[]) {
             
             //GC if exists a user with this username continue the loop 
             if(response==PREREGISTRATION_KO) {
-                printf("Username già in uso! \n");
+                printf("Username already used! \n");
                 //GC this clear the stdin
                 while(getchar()!='\n');
                 continue;
@@ -242,7 +252,7 @@ int main(int argc, char* argv[]) {
                 //GC if response is equal to RESPONSE_KO, something went wrong so 
                 //its better to quit the program
                 if(response==REGISTRATION_KO){
-                    printf("errore aggiunta user \n");
+                    printf("Error adding user \n");
                     return 1;
                 }
                 strcpy(user,username);
@@ -254,12 +264,15 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    
-
+    //GC free the helper buffers 
     free(username);
     free(password);
 
-    //choose the interlocutor
+//#############################ENDOF1STPHASE#######################################################################################
+
+//###############################2NDPHASE##########################################################################################
+
+    //GC choose the interlocutor
     Message_init(&m,USER_LIST_REQUEST,NULL,NULL,NULL,0);
     bytes_sent=0;
     while ( bytes_sent < MESSAGE_SIZE) {
@@ -268,7 +281,8 @@ int main(int argc, char* argv[]) {
         if (ret == -1) handle_error("Cannot write to the socket");
         bytes_sent = ret;
     }
-    //GC Wait for response from the server
+
+    //GC wait for response from the server
     memset(buf,0,buf_len);
     recv_bytes = 0;
     do {
@@ -286,35 +300,95 @@ int main(int argc, char* argv[]) {
     char interlocutor[MAX_CREDENTIAL];
     if(response==USER_LIST_RESPONSE){
         char* list=message->content;
-        checkregistereduser(list,interlocutor,user);
+        Check_registered_user(list,interlocutor,user);
     }
-    printf("interlocutor is:%s \n",interlocutor);
-    if(!strcmp(interlocutor,SERVER_COMMAND)) goto END;
-    
+    printf(BRED "\nYour interlocutor is: %s \n",interlocutor);
+    if(!strcmp(interlocutor,SERVER_COMMAND)) goto END; //FC goto is ok since we have only one end-point
 
-    //GC create a thread to handler receiving messages
+
+    //FC request for a chat between user and interlocutor choosen at the previous point
+    Message_init(&m,CHAT_REQUEST,user,NULL,interlocutor,strlen(interlocutor));
+    bytes_sent=0;
+    while ( bytes_sent < MESSAGE_SIZE) {
+        ret = sendto(socket_desc, &m , MESSAGE_SIZE, 0, (struct sockaddr*) &server_addr, sizeof(struct sockaddr_in));
+        if (ret == -1 && errno == EINTR) continue;
+        if (ret == -1) handle_error("Cannot write to the socket");
+        bytes_sent = ret;
+    }
+
+    //FC wait for response from the server CHAT_OK or CHAT_KO if the chat already exists it will send the list of messages
+    memset(buf,0,buf_len);
+    recv_bytes = 0;
+    do {
+        ret = recvfrom(socket_desc, buf, buf_len, 0, NULL, NULL);
+        if (ret == -1 && errno == EINTR) continue;
+        if (ret == -1) handle_error("Cannot read from the socket");
+        if (ret == 0) break;
+        recv_bytes = ret;
+
+    } while ( recv_bytes<=0 );
+
+    message=(Message*)buf;
+    response=message->header;
+
+    //FC case 1: Chat created by the server (CHAT_OK)
+    if (response==CHAT_OK){
+        
+        //FC debugging
+        if (DEBUG) fprintf(stderr, "The chat between you and %s has been successfully created in our server \n", interlocutor);
+    }
+
+    //FC case 2: Chat already exists (CHAT_KO)
+    else {
+        
+        memset(buf,0,buf_len);
+        recv_bytes = 0;
+        do { 
+            //qua leggere tutti i messaggi inviati!!!
+            ret = recvfrom(socket_desc, buf, buf_len, 0, NULL, NULL);
+            if (ret == -1 && errno == EINTR) continue;
+            if (ret == -1) handle_error("Cannot read from the socket");
+            if (ret == 0) break;
+            recv_bytes = ret;
+
+    } while ( recv_bytes<=0 );
+    
+    message=(Message*)buf;
+    response=message->header;
+    
+    
+    }
+
+
+
+
+
+//##############################ENDOF2NDPHASE#######################################################################################
+
+
+//###############################3THDPHASE############################################################################################
+
+    //GC create a thread to handle receiving messages and detach it
     pthread_t receiver_thread;
     ret = pthread_create(&receiver_thread, NULL, receiver_handler , (void *)&socket_desc);
+    if (ret) handle_error_en(ret, "Could not create a new thread for receiving messages for your chat");
     
-    if (ret) handle_error_en(ret, "Could not create a new thread");
-    
-    if (DEBUG) fprintf(stderr, "New thread created to handle the request!\n");
+    if (DEBUG) fprintf(stderr, "(Thread created) Now you can receive messages from your chat!\n");
         
-    ret = pthread_detach(receiver_thread); //GC I won't phtread_join() on this thread
-    if (ret) handle_error_en(ret, "Could not detach the thread");
+    ret = pthread_detach(receiver_thread); //GC we won't call phtread_join() on this thread
+    if (ret) handle_error_en(ret, "Could not detach the receiving thread");
+    
     //FC asking for the message to send
-    printf(BGRN "Start your chat:\n");
+    printf(BGRN "\nYou just entered the chat with %s \n\n",interlocutor);
+    if (DEBUG) fprintf(stderr, "(Thread created) Now you can send messages from your chat!\n");
 
-    //FC main loop to handler sending messages
+    //FC main loop to handle sending thread: it must send messages (HEADER:9) to the server
     while (1) {
 
         //FC quit command and its size
         char* quit_command = SERVER_COMMAND;
         size_t quit_command_len = strlen(quit_command);
 
-        
-        
-        
         //FC read a line from stdin, fgets() reads up to sizeof(buf)-1 bytes and on success returns the buf passed as argument
         if (fgets(buf, sizeof(buf), stdin) != (char*)buf) {
             fprintf(stderr, "Error while reading from stdin, exiting...\n");
@@ -347,9 +421,11 @@ int main(int argc, char* argv[]) {
         memset(buf,0,buf_len);
         
     }
+    
 
+//##############################ENDOF3THDPHASE############################################################################################
 
-    //FC after the loop ends for a "QUIT\n", close the socket and release unused resources
+//FC after the loop ends for a "QUIT\n", close the socket and release unused resources
 
 END: ret = close(socket_desc);
     if (ret < 0) handle_error("Cannot close the socket");

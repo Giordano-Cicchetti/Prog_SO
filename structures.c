@@ -41,8 +41,9 @@ int User_compare_only_username(void* a, void* b){
   int cmp1=strcmp(ua->username, ub->username);
   return cmp1;
 }
-// GC given a list of users, ask the user a username and check if it's avalaible
-void checkregistereduser(char* listusers,char* interlocutor,char* current_user){
+
+//GC given a list of users, ask the user a username and check if it's avalaible
+void Check_registered_user(char* listusers,char* interlocutor,char* current_user){
   char user_in[MAX_CREDENTIAL];
   int user_len=0;
   char* quit=SERVER_COMMAND;
@@ -53,40 +54,35 @@ void checkregistereduser(char* listusers,char* interlocutor,char* current_user){
   while(1){
     //GC take the username
     strcpy(list,listusers); 
-    printf("Per continuare bisogna inserire lo username dell'utente con cui si desidera parlare.\n");
-    printf("Scegli tra questi user registrati:\n%s",listusers);
-    printf("Inserire un nickname: ");
+    printf(BGRN "You have to insert the username of the user with whom you want to talk\n");
+    printf(BBLU "\nChoose between these users registered to our Private Chat:\n\n%s",listusers);
+    printf(BBLU "\nInsert it here: ");
     scanf("%s",user_in);
     while(getchar()!='\n');
     user_len = strlen(user_in);
     if (user_len == quit_len -1  && !memcmp(user_in, quit, quit_len -1)){
       if (DEBUG) fprintf(stderr, "Sent QUIT command ...\n");
       strcpy(interlocutor, quit);
-      return ;
+      return;
     }
     if(!strcmp(current_user,user_in)){
-      printf("scegli un utente diverso da te stesso \n");
+      printf(BRED "You can't talk with yourself!\n");
       continue;
     }
-
     char *token;
-
-    /*.... get the first token */
+    //GC get the first token 
     token = strtok(list, &s);
     
-    /*.... walk through other tokens */
+    //GC walk through other tokens 
     while( token != NULL ) {
-      
       if(strcmp(user_in,token)==0){
-        
-        strcpy(interlocutor, user_in);
-        return ;
+      strcpy(interlocutor, user_in);
+      return;
       }
       token = strtok(NULL, &s);
     }
-    printf("Nessun username trovato \n");
+    printf("Username not found!\n");
   }
-
 }
 
 //######################################################################################################################
@@ -320,6 +316,7 @@ void Chat_list_print(ListHead* list){
 
 //FC to remove all chats from a list of chats
 void Remove_all_chats_from_list(ListHead* list){
+  
   if(DEBUG)
     printf("....Removing all chats from the list.... \n \n");
   
@@ -329,6 +326,7 @@ void Remove_all_chats_from_list(ListHead* list){
     aux=aux->next;
     List_detach(list, item);
     Chat_destroy(((ChatListItem*)item)->chat);
+    free(((ChatListItem*)item)->chat->list_msg);
     free(item);
   }
   
@@ -354,6 +352,7 @@ Chat* Find_chat_by_username(ListHead* chatlist, char username[MAX_CREDENTIAL]){
   return NULL;
 }
 
+//FC finding a chat by usernames involved in it
 Chat* Chat_ispresent_between_users(ListHead* chatlist, char user1[MAX_CREDENTIAL],char user2[MAX_CREDENTIAL]){
   if(DEBUG)
     printf("....Finding a chat where %s and %s are involved.... \n \n", user1, user2);
@@ -391,8 +390,9 @@ void UserOnline_print(UserOnline* useronline){
   else{
     strcpy(otheruser, useronline->chat->user1);
   }
-  printf(BGRN "A new user is chatting now! \n User %s is now online through this IP address: %s \n He/She is talking with %s" reset, useronline->username, useronline->ipaddr, otheruser);
+  printf(BGRN "\nUser %s is online through this IP address: %s \nHe/She is talking with %s\n" reset, useronline->username, useronline->ipaddr, otheruser);
   if(useronline->chat->list_msg != NULL)
+    printf(BRED "\nList of messages:\n");
     MessageList_print(useronline->chat->list_msg);  
 }
 
@@ -468,47 +468,43 @@ void Remove_all_usersonline_from_list(ListHead* list){
 
 //FC giving back the IP address of a username
 char* Give_useronline_IP(ListHead* useronlinelist, char username[MAX_CREDENTIAL]){
-  char ipaddr[15]; 
+  
   ListItem* aux=useronlinelist->first;
 
   while(aux){
     UserOnlineListItem* item=(UserOnlineListItem*)aux;
-    if (strcmp(item->useronline->username, username)== 0)
+    if (strcmp(item->useronline->username, username)== 0){
+      if(DEBUG)
+        printf("....Giving IP of %s: %s  .... \n \n", username, item->useronline->ipaddr);
       return item->useronline->ipaddr;
+    }
 
     aux=aux->next;
   }
-  if(DEBUG)
-    printf("....Giving IP of %s: %s  .... \n \n", username, ipaddr);
   return NULL;
+}
+
+//FC giving back the username if it is online or NULL otherwise
+char* UserOnline_ispresent(ListHead* useronlinelist, char username[MAX_CREDENTIAL]){
+
+  ListItem* aux=useronlinelist->first;
+
+  while(aux){
+    UserOnlineListItem* item=(UserOnlineListItem*)aux;
+    if (strcmp(item->useronline->username, username)== 0){
+      if(DEBUG)
+        printf(BRED "....%s is online!  .... \n\n", username);
+      return item->useronline->username;
+    }
+
+    aux=aux->next;
+  }
+  return NULL;
+
 }
 
 /* COSA MANCA
 
-4)void dato_username_dammi_ip_useronline(listauseronline,username) senno rida null e significa non ce tale user online quindi no forwarding
-
-  cicla sulla lista useronline e finche trova quel username poi prende l' ip relativo senno null (no forwarding)
-
-
-
-
-6)funzione che legga lato client la stringa inviata dal server con tutti gli utenti e la parsi vedendo se ce quell'utente li dentro dato come input dall'utente.
-  
-  
-  // qua il client riceve dal server una lista di utenti salvata in "listusers" come "feffo/npippo/n" ecc
-  
-  boolean checkregistereduser(char* listusers){
-    
-  1)scanf per prendere input un username
-  3)arrivati qua significa che è un nome  e allora controllo che sia fra quelli in listusers
-  4)se non lo è rivai al passo 1
-  5)se lo è allora ridai true e termina la funzione
-  6) ogni volta che chiediamo l'input l'utente se digita il comando QUIT/n fa terminare il programma client
-  
-  }
-  
-
-...........
 RIVEDI TUTTE LE PRIMITIVE SE OK E NEL CASO QUELLE BASILARI AGGIUNGERLE ANCHE SE NON SERVONO
 
 POI COMPLETARE FASE 1 
@@ -518,6 +514,8 @@ POI FASE 2 SCELTA UTENTI
 POI SERVER CHE VEDE HEADER E RISPONDE DIVERSAMENTE 
 
 POI CLIENT sistemare nello scambio messaggi nella chat
+
+TICKS e SIGNALS
 
 */
 

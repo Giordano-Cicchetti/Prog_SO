@@ -70,12 +70,14 @@
 #define BHCYN "\e[1;96m"
 #define BHWHT "\e[1;97m"
 
-//move cursor
+//Move Cursor
 #define MOVE_RIGHT "\033[40C"
 #define MOVE_LEFT "\033[40D"
 #define CLEAR_SCREEN "\033[2J"
+
 //Reset
 #define RESET "\033[0m"
-//GC added by us
+
+//Another Reset
 #define reset "\e[0m"
 

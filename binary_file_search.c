@@ -15,7 +15,7 @@ void User_print(int fd,int num_users){
   User u ;
   int i=num_users-1; // read in reverse order!!
   while(!binaryFileRead(fd, &u, sizeof(User), i)){
-    printf("username: %s, password:%s\n", u.username, u.password);
+    printf("Username: %s, Password:%s\n", u.username, u.password);
     --i;
   }
 }
@@ -40,7 +40,7 @@ int normalFileSearch(int fd, void* item, int item_size, CompareFn compare){
 
   //GC from the size, we determine the number of records
   int size=stats.st_size;
-  if(DEBUG) printf("size: %d, item_size: %d\n", size, item_size);
+  if(DEBUG) printf("Size: %d, Item_size: %d\n", size, item_size);
   
 
   //GC we determine the number of records and read from the right position 
@@ -53,12 +53,12 @@ int normalFileSearch(int fd, void* item, int item_size, CompareFn compare){
   while(num_records){
     off_t offset=lseek(fd, pos*item_size, SEEK_SET);
     if (offset<0){
-      printf("bad things happened\n");
+      printf("Bad things happened\n");
       return -1;
     }
     int bytes_read=read(fd, buffer, item_size);
     if (bytes_read!=item_size){
-      printf("invalid read\n");
+      printf("Invalid read\n");
       return -1;
     }
     int cmp_result=(*compare)(item,buffer);

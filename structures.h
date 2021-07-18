@@ -4,7 +4,7 @@
 //FC file to keep users registered
 #define FILENAME "./registered_users"
 
-//FC constants for username,password and message length
+//FC constants for username,password and message content length
 #define MAX_CREDENTIAL 128
 #define MAX_CONTENT 1024
 
@@ -44,14 +44,12 @@ typedef struct {
 
 //GC function to initialize the USER STRUCT
 void User_init(User* dest,char* username,char* password);
-
 //GC functions to compare the users. the first compares username and password, while the second compare only the username
 //GC taking two items and returns -1 if v1<v2 ; 1 if v1>v2 ; 0 if v1==v2
 int User_compare(void* a, void* b);
 int User_compare_only_username(void* a, void* b);
-
 // GC given a list of users, ask the user a username and check if it's avalaible
-void checkregistereduser(char* listusers,char* interlocutor,char* current_user);
+void Check_registered_user(char* listusers,char* interlocutor,char* current_user);
 
 //######################################################################################################################
 
@@ -117,8 +115,9 @@ void UserOnline_print(UserOnline* useronline);
 void UserOnline_list_print(ListHead* list);
 void Add_useronline_to_list(ListHead* head, Chat* chat, char username[MAX_CREDENTIAL], char ipaddr[15]);
 void Remove_useronline_from_list(ListHead* list, char username[MAX_CREDENTIAL]);
-void Remove_all_useronline_from_list(ListHead* list);
+void Remove_all_usersonline_from_list(ListHead* list);
 char* Give_useronline_IP(ListHead* useronlinelist, char username[MAX_CREDENTIAL]);
+char* UserOnline_ispresent(ListHead* useronlinelist, char username[MAX_CREDENTIAL]);
 
 //######################################################################################################################
 
@@ -127,17 +126,17 @@ char* Give_useronline_IP(ListHead* useronlinelist, char username[MAX_CREDENTIAL]
 
 typedef struct MessageListItem{
   ListItem list;
-  Message* msg; //FC pointer to message
+  Message* msg; //FC pointer to message struct
 } MessageListItem;
 
 typedef struct ChatListItem{
   ListItem list;
-  Chat* chat; //FC pointer to chat
+  Chat* chat; //FC pointer to chat struct
 } ChatListItem;
 
 typedef struct UserOnlineListItem{
   ListItem list;
-  UserOnline* useronline; //FC pointer to useronline
+  UserOnline* useronline; //FC pointer to useronline struct
 } UserOnlineListItem;
 
 //######################################################################################################################

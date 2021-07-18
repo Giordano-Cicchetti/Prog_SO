@@ -26,12 +26,12 @@ int fd;
 //GC number of users registered
 int num_users;
 
-//*************************************************************//
+//##############################SERVER_HANDLER############################################################################################
 
 /*FC method for processing incoming requests, it takes as argument
  the socket descriptor for the incoming connection */
 void* connection_handler(int socket_desc) {
-
+    printf(BMAG "\nServer of the Private Chat!\n\n");
     //FC values returned by the syscalls called in the following part, bytes read and sent every time something is arrived
     int ret, recv_bytes, bytes_sent;
 
@@ -68,7 +68,7 @@ void* connection_handler(int socket_desc) {
         
         //FC receiving
         do {
-            printf(BGRN "Receiving.. \n" reset);
+            printf(BGRN "\nReceiving.. \n" reset);
             recv_bytes = recvfrom(socket_desc, buf, buf_len, 0, (struct sockaddr *) &client_addr, (socklen_t *) &sockaddr_len);
             if (recv_bytes == -1 && errno == EINTR) continue;
             if (recv_bytes == -1) handle_error("Cannot read from the socket");
@@ -83,11 +83,8 @@ void* connection_handler(int socket_desc) {
         //FC taking the ip address from the clientaddr struct so that server can know who is the client
         char* dst=NULL;
         dst = inet_ntoa(client_addr.sin_addr); //FC return the IP
-        printf(BRED "%s \n" reset ,dst); //FC prints "10.0.0.1"
+        printf(BRED "\nFrom %s \n" reset ,dst); //FC prints "10.0.0.1"
      
-
-
-
 
         //FC debugging
         if (DEBUG) {
@@ -97,27 +94,43 @@ void* connection_handler(int socket_desc) {
         //GC I see the incoming bytes as a message struct
 
         Message* message= (Message*)buf;
-        Message m ;
+        Message m;
 
         //GC I check for the type of the message looking into the header
-
         int header = message->header;
+
+
+
+        //------------DIFFERENT RESPONSES TO DIFFERENT MESSAGE HEADERS---------------
+
+
+        //**HEADER 0-1-2** : LOGIN
 
         //GC if the message is a request of login do some stuff
         if(header==LOGIN){
             User* u = (User*) message->content;
-            printf(BRED "Server: %s ask for login \n" reset ,u->username);
+            printf(BRED "\n%s " reset ,u->username);
+            printf(BWHT "asks for login\n" reset);
             int pos=normalFileSearch(fd, u, sizeof(User), User_compare);
-            //GC if user's credentials are right send LOGIN_OK
-            if(pos >= 0){
+            
+            //GC if user's credentials are right and that user IS NOT ONLINE send LOGIN_OK
+            char* present=UserOnline_ispresent(&usersonline_list, u->username);
+            if (pos >= 0 &&  present==NULL){
                 Message_init(&m,LOGIN_OK,NULL,NULL,"login accept",13);
-                printf(BRED "Server: %s login accepted \n" reset ,u->username);
+                printf(BRED "\n%s " reset ,u->username);
+                printf(BWHT "Login accepted\n" reset);
             }
-            //GC else send LOGIN_KO
-            else{
+            //GC else send LOGIN_KO if is already online or if is not in the file of registered users
+            else if (pos >= 0 && present != NULL){
+                Message_init(&m,LOGIN_KO,NULL,NULL,"login failed (already online)",30);
+                printf(BRED "%s Login denied \n" reset ,u->username);
+            }
+            else{ 
                 Message_init(&m,LOGIN_KO,NULL,NULL,"login failed",13);
-                printf(BRED "Server: %s login denied \n" reset ,u->username);
+                printf(BRED "%s Login denied \n" reset ,u->username);
+
             }
+
             bytes_sent=0;
             while ( bytes_sent < MESSAGE_SIZE) {
                 ret = sendto(socket_desc, &m, MESSAGE_SIZE, 0, (struct sockaddr*) &client_addr, sizeof(struct sockaddr_in));
@@ -125,15 +138,18 @@ void* connection_handler(int socket_desc) {
                 if (ret == -1) handle_error("Cannot write to the socket");
                 bytes_sent = ret;
             }
-            printf("sent message to the client for login \n");
+            printf(BWHT "Sent message to the client for login \n");
             if(DEBUG)User_print(fd,num_users);
             continue;
         }
+        
+        
+        //**HEADER 3-4-5** : PREREGISTRATION
 
         //GC if the message is a request of username validation do some other stuff
         else if(header==PREREGISTRATION){
             User* u = (User*) message->content;
-            printf(BRED "Server: %s ask for valid username \n" reset ,u->username);
+            printf(BRED "Server: %s asks for valid username \n" reset ,u->username);
             //GC search if username already exists 
             int pos=normalFileSearch(fd, u, sizeof(User), User_compare_only_username);
             //GC if username exists send PREREGISTRATION_KO
@@ -158,7 +174,9 @@ void* connection_handler(int socket_desc) {
             continue;
 
         }
-        
+
+        //**HEADER 6-7-8** : REGISTRATION
+
         //GC if the message is a request of registration do some other stuff
         else if(header==REGISTRATION){
             User* u = (User*) message->content;
@@ -188,6 +206,9 @@ void* connection_handler(int socket_desc) {
             continue;
 
         }
+
+        //**HEADER 15-16** : REQUEST OF USERS LIST
+
         else if(header==USER_LIST_REQUEST){
             char dummy[num_users*MAX_CREDENTIAL];
             User_all_usernames(fd,dummy,num_users);
@@ -199,11 +220,85 @@ void* connection_handler(int socket_desc) {
                 if (ret == -1) handle_error("Cannot write to the socket");
                 bytes_sent = ret;
             }
-            printf("sent the user's list to the client \n");
+            printf(BWHT "\nSent the user's list to the client \n");
             continue;
         }
         
+        //**HEADER 12-13-14** : CHAT REQUEST - CHAT_OK/KO
+        else if(header==CHAT_REQUEST){
+            
+            char* user=message->from;
+            char* interlocutor=message->content;
+            printf(BRED "\nChat request from %s with %s\n",user,interlocutor);
+            
+            Chat* chat= NULL;
+            chat=Chat_ispresent_between_users(&chat_list,user,interlocutor);
 
+            //FC taking the ip address from the clientaddr struct so that server can know who is the client
+            char* ip=NULL;
+            ip = inet_ntoa(client_addr.sin_addr); //FC return the IP
+        
+            //FC chat is present: sending the previous message
+            if (chat!=NULL){
+                printf("prova1");
+                //FC creating the user online for user : if he/she is already online would not be here (login failed)
+                Add_useronline_to_list(&usersonline_list,chat,user, ip);
+                
+                //FC printing useronline list and their chat
+                UserOnline_list_print(&usersonline_list);
+                Chat_print(chat);
+
+                Message_init(&m,CHAT_KO,NULL,NULL,NULL,0);
+                bytes_sent=0;
+                while ( bytes_sent < MESSAGE_SIZE) {
+                     ret = sendto(socket_desc, &m, MESSAGE_SIZE, 0, (struct sockaddr*) &client_addr, sizeof(struct sockaddr_in));
+                     if (ret == -1 && errno == EINTR) continue;
+                     if (ret == -1) handle_error("Cannot write to the socket");
+                     bytes_sent = ret;
+                }
+
+                //invia tutti i messaggi della chat!!!
+            
+                continue;
+            }
+
+            else { //FC chat is NOT present
+
+                printf("prova2");
+                ListHead list_msg;
+                List_init(&list_msg);
+                Add_chat_to_list(&chat_list, user, interlocutor, &list_msg); 
+
+                Chat* user_chat=Find_chat_by_username(&chat_list, user);
+
+                //FC creating the user online for user : if he/she is already online would not be here (login failed)
+                Add_useronline_to_list(&usersonline_list, user_chat, user, ip);
+                printf("gggggg");
+                 //FC printing useronline list and all chats
+                UserOnline_list_print(&usersonline_list);
+                printf("prova10");
+                Chat_list_print(&chat_list);
+
+                Message_init(&m,CHAT_OK,NULL,NULL,NULL,0);
+                bytes_sent=0;
+                while ( bytes_sent < MESSAGE_SIZE) {
+                     ret = sendto(socket_desc, &m, MESSAGE_SIZE, 0, (struct sockaddr*) &client_addr, sizeof(struct sockaddr_in));
+                     if (ret == -1 && errno == EINTR) continue;
+                     if (ret == -1) handle_error("Cannot write to the socket");
+                     bytes_sent = ret;
+                }
+                continue;
+            }
+
+        }
+
+        
+        
+        // OTHER HEADERS!! ::::::::TODO:::::::::
+
+
+
+//------------------------------------------RESPONSE TEMPORARY--------------------------------------------------------
 
         //FC receive message from client and print it as green bold text
         printf(BRED "Client: %s \n" reset ,buf);
@@ -238,7 +333,7 @@ void* connection_handler(int socket_desc) {
             bytes_sent = ret;
         }
 
-    }
+    }// end of while(1)
 
     //FC after the loop ends (now it is never), close the socket and release unused resources
     ret = close(socket_desc);
@@ -252,9 +347,9 @@ void* connection_handler(int socket_desc) {
 
 }
 
-
-/* ########################################################################################################################## */
+//##############################ENDOF_SERVER_HANDLER#############################################################
     
+//####################################MAIN#############################################################################
 
 //FC main
 int main(int argc, char* argv[]) {
@@ -270,25 +365,10 @@ int main(int argc, char* argv[]) {
     int size=stats.st_size;
     num_users=size/USER_SIZE;
     assert(!(size%USER_SIZE));
-
-////////TRIAL////////////
-    //... trying users usernames , and strtok
-    char dummy[num_users*MAX_CREDENTIAL];
-    User_all_usernames(fd,dummy,num_users);
-    printf("users:\n%s",dummy);
-    const char s[1] = "\n";
-    char *token;
-
-    /*.... get the first token */
-    token = strtok(dummy, s);
-
-    /*.... walk through other tokens */
-    while( token != NULL ) {
-    printf( "%s\n", token );
-
-    token = strtok(NULL, s);
-    }
-/////ENDOFTRIAL////////////
+    
+    //FC lists initialized
+    List_init(&chat_list);
+    List_init(&usersonline_list);
 
     //FC values returned by the syscalls called in the following part
     int ret;
@@ -348,3 +428,5 @@ int main(int argc, char* argv[]) {
     close(fd);
     exit(EXIT_SUCCESS); 
 }
+
+//####################################ENDOFMAIN#############################################################################
