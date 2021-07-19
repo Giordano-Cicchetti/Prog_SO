@@ -30,7 +30,7 @@ int num_users;
 //FC socket descriptor
 int socket_desc;
 
-//FC handler for exit with SIGHUP or SIGINT (sigaction)
+//FC handler for exit with SIGHUP or SIGINT/SIGTSTP (sigaction)
 void quit_handler(){
     
     //FC closing the file
@@ -254,7 +254,7 @@ void* connection_handler(int socket_desc) {
             continue;
         }
         
-        //**HEADER 12-13-14** : CHAT REQUEST - CHAT_OK/KO
+        //**HEADER 12-13** : CHAT REQUEST - CHAT_OK
         else if(header==CHAT_REQUEST){
             
             char* user=message->from;
@@ -334,7 +334,27 @@ void* connection_handler(int socket_desc) {
 
         }
 
-        
+        //**HEADER 14** : CHAT_KO
+        else if(header==CHAT_KO){
+            //FC is CHAT_KO arrives the server remove the user as user online and send CHAT_KO back as a confirm
+            char* from=message->from;
+            UserOnline_list_print(&usersonline_list);
+            Remove_useronline_from_list(&usersonline_list,from);
+            printf("%s is asking to exit the Chat, the updated list of online users is..\n\n",from);
+            UserOnline_list_print(&usersonline_list);
+            
+            Message_init(&m,CHAT_KO,NULL,NULL,NULL,0);
+                bytes_sent=0;
+                while ( bytes_sent < MESSAGE_SIZE) {
+                     ret = sendto(socket_desc, &m, MESSAGE_SIZE, 0, (struct sockaddr*) &client_addr, sizeof(struct sockaddr_in));
+                     if (ret == -1 && errno == EINTR) continue;
+                     if (ret == -1) handle_error("Cannot write to the socket");
+                     bytes_sent = ret;
+                }
+            printf("Sent to the client the confirm to exit");
+            continue;
+
+        }
         
         // OTHER HEADERS!! ::::::::TODO:::::::::
 
@@ -415,12 +435,13 @@ int main(int argc, char* argv[]) {
     //FC values returned by the syscalls called in the following part
     int ret;
 
-    //FC install CTRL-C (SIGINT) signal handler and kill terminal handler (SIGHUP)
+    //FC install CTRL-C (SIGINT) and CTRL-Z (SIGTSTP) signal handler and kill terminal handler (SIGHUP)
     struct sigaction action;
     memset(&action, 0, sizeof(action));
     action.sa_handler = &quit_handler;
     sigaction(SIGINT, &action, NULL);
     sigaction(SIGHUP, &action, NULL);
+    sigaction(SIGTSTP, &action, NULL);
 
     //FC initialize the sockaddr_in structure of the server
     struct sockaddr_in server_addr = {0};

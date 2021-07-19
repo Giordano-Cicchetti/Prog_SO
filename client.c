@@ -24,17 +24,47 @@ struct sockaddr_in server_addr = {0};
 //FC current user
 char user[MAX_CREDENTIAL];
 
-//FC handler for exit with SIGHUP or SIGINT (sigaction)
+//FC handler for exit with SIGHUP or SIGINT/SIGTSTP (sigaction) or QUIT\n
 void quit_handler(){
-    
-    int ret = close(socket_desc);
+    Message m;
+    Message* message;
+    int ret;
+
+    //FC sending CHAT_KO to the server with from so that server can delete him/her as a User Online
+    Message_init(&m,CHAT_KO,user,NULL,NULL,0);
+    int bytes_sent=0;
+    while ( bytes_sent < MESSAGE_SIZE ) {
+        ret = sendto(socket_desc, &m , MESSAGE_SIZE, 0, (struct sockaddr*) &server_addr, sizeof(struct sockaddr_in));
+        if (ret == -1 && errno == EINTR) continue;
+        if (ret == -1) handle_error("Cannot write to the socket");
+        bytes_sent = ret;
+    }
+
+    //FC exiting
+    printf(BGRN "\n\nExiting...\n");
+
+    //FC wait for response from the server with CHAT_KO otherwise it will restart the quit_handler
+    char buf[MESSAGE_SIZE];
+    memset(buf,0,MESSAGE_SIZE);
+    int recv_bytes = 0;
+    do {
+        ret = recvfrom(socket_desc, buf, MESSAGE_SIZE, 0, NULL, NULL);
+        if (ret == -1 && errno == EINTR) continue;
+        if (ret == -1) handle_error("Cannot read from the socket");
+        if (ret == 0) break;
+        recv_bytes = ret;
+        
+    } while ( recv_bytes<=0 );
+
+    message=(Message*)buf;
+    int response=message->header;
+    if(response != CHAT_KO) {printf("exit again"); quit_handler(); return;}
+
+    ret = close(socket_desc);
     if (ret < 0) handle_error("Cannot close the socket");
 
     //FC debugging
     if (DEBUG) printf(BGRN "\n\nSocket closed...\n");
-
-    //FC exiting
-    printf(BGRN "\n\nExiting...\n");
 
     //FC exiting with success
     exit(EXIT_SUCCESS);
@@ -78,9 +108,6 @@ void* receiver_handler(void *arg) {
         else if(strcmp(user,m->to)==0){
             printf(BRED MOVE_RIGHT "%s\e[1;32m\n", m->content); 
         }
-
-    
-
     }
     pthread_exit(NULL);
 }
@@ -89,12 +116,13 @@ void* receiver_handler(void *arg) {
 //FC main
 int main(int argc, char* argv[]) {
     
-  //FC install CTRL-C (SIGINT) signal handler and kill terminal handler (SIGHUP)
+  //FC install CTRL-C (SIGINT) and CTRL-Z (SIGTSTP) signal handler and kill terminal handler (SIGHUP)
     struct sigaction action;
     memset(&action, 0, sizeof(action));
     action.sa_handler = &quit_handler;
     sigaction(SIGINT, &action, NULL);
     sigaction(SIGHUP, &action, NULL);
+    sigaction(SIGTSTP , &action, NULL);
 
     //FC values returned by the syscalls called in the following part, bytes read and sent every time something is arrived
     int ret,bytes_sent,recv_bytes;  
@@ -336,7 +364,7 @@ int main(int argc, char* argv[]) {
         Check_registered_user(list,interlocutor,user);
     }
     printf(BRED "\nYour interlocutor is: %s \n",interlocutor);
-    if(!strcmp(interlocutor,SERVER_COMMAND)) quit_handler(); //FC goto is ok since we have only one end-point
+    if(strcmp(interlocutor,SERVER_COMMAND)==0) quit_handler(); //FC goto is ok since we have only one end-point
 
 
     //FC request for a chat between user and interlocutor choosen at the previous point
