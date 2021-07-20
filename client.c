@@ -21,6 +21,8 @@
 int socket_desc;
 struct sockaddr_in server_addr = {0};
 
+pthread_t receiver_thread;
+
 //FC current user
 char user[MAX_CREDENTIAL];
 
@@ -29,6 +31,11 @@ void quit_handler(){
     Message m;
     Message* message;
     int ret;
+     //GC close the receiver thread
+    if(pthread_cancel(receiver_thread)) {
+        printf("Error closing thread\n");
+        exit(EXIT_FAILURE);
+    }
 
     //FC sending CHAT_KO to the server with from so that server can delete him/her as a User Online
     Message_init(&m,CHAT_KO,user,NULL,NULL,0);
@@ -42,6 +49,8 @@ void quit_handler(){
 
     //FC exiting
     printf(BGRN "\n\nExiting...\n");
+
+   
 
     //FC wait for response from the server with CHAT_KO otherwise it will restart the quit_handler
     char buf[MESSAGE_SIZE];
@@ -408,7 +417,7 @@ int main(int argc, char* argv[]) {
 //###############################3THDPHASE############################################################################################
 
     //GC create a thread to handle receiving messages and detach it
-    pthread_t receiver_thread;
+    
     ret = pthread_create(&receiver_thread, NULL, receiver_handler , (void *)&socket_desc);
     if (ret) handle_error_en(ret, "Could not create a new thread for receiving messages for your chat");
     
@@ -437,10 +446,18 @@ int main(int argc, char* argv[]) {
         //FC length of the message
         msg_len = strlen(buf);
 
+        //FC if the message is "QUIT\n", client shutdown exiting the loop
+		if (msg_len == quit_command_len && !memcmp(buf, quit_command, quit_command_len)){
+
+            if (DEBUG) fprintf(stderr, "Sent QUIT command ...\n");
+            quit_handler();
+
+        }
+        Message_init(&m,NORMAL_MESSAGE,user,interlocutor,(void*)buf,msg_len+1);
 		//FC send message to server, sendto() with flags = 0 is equivalent to write() to a descriptor
         bytes_sent=0;
         while ( bytes_sent < msg_len) {
-            ret = sendto(socket_desc, buf, msg_len, 0, (struct sockaddr*) &server_addr, sizeof(struct sockaddr_in));
+            ret = sendto(socket_desc, &m , MESSAGE_SIZE, 0, (struct sockaddr*) &server_addr, sizeof(struct sockaddr_in));
             if (ret == -1 && errno == EINTR) continue;
             if (ret == -1) handle_error("Cannot write to the socket");
             bytes_sent = ret;
@@ -450,13 +467,7 @@ int main(int argc, char* argv[]) {
         if (DEBUG) fprintf(stderr, "Sent message of %d bytes...\n", bytes_sent);
 
 
-        //FC if the message is "QUIT\n", client shutdown exiting the loop
-		if (msg_len == quit_command_len && !memcmp(buf, quit_command, quit_command_len)){
-
-            if (DEBUG) fprintf(stderr, "Sent QUIT command ...\n");
-            quit_handler();
-
-        }
+        
         memset(buf,0,buf_len);
         
     }

@@ -14,6 +14,7 @@
 #include <netinet/in.h> // struct sockaddr_in
 #include <sys/socket.h>
 
+
 //*USER*
 
 //GC initializing the user
@@ -397,11 +398,12 @@ Chat* Chat_ispresent_between_users(ListHead* chatlist, char user1[MAX_CREDENTIAL
 //*USERONLINE*
 
 //FC initializing a useronline
-void UserOnline_create(UserOnline* useronline, char username[MAX_CREDENTIAL], char ipaddr[15], Chat* chat){
+void UserOnline_create(UserOnline* useronline, char username[MAX_CREDENTIAL], char ipaddr[15],in_port_t port, Chat* chat){
   assert(useronline);
   strcpy(useronline->username,username);
   strcpy(useronline->ipaddr,ipaddr);
   useronline->chat=chat;
+  useronline->port=port;
 }
 
 //FC printing a user online with infos
@@ -430,7 +432,7 @@ void UserOnline_list_print(ListHead* list){
 }
 
 //FC adding a user online to the global list in the server memory when enters a chat
-void Add_useronline_to_list(ListHead* head, Chat* chat, char username[MAX_CREDENTIAL], char ipaddr[15]){
+void Add_useronline_to_list(ListHead* head, Chat* chat, char username[MAX_CREDENTIAL], char ipaddr[15],in_port_t port){
   UserOnlineListItem* new_element= (UserOnlineListItem*)malloc(sizeof(UserOnlineListItem));
   if (!new_element) {
       printf("Out of memory \n");
@@ -440,7 +442,7 @@ void Add_useronline_to_list(ListHead* head, Chat* chat, char username[MAX_CREDEN
   (new_element->list).next=NULL;
   (new_element->list).prev=NULL;
   new_element->useronline=(UserOnline*)malloc(sizeof(UserOnline));
-  UserOnline_create(new_element->useronline,username,ipaddr,chat);
+  UserOnline_create(new_element->useronline,username,ipaddr,port,chat);
    
   ListItem* result= List_insert(head,head->last, (ListItem*) new_element);
   assert(result);
@@ -525,6 +527,39 @@ char* UserOnline_ispresent(ListHead* useronlinelist, char username[MAX_CREDENTIA
   }
   return NULL;
 
+}
+in_port_t Give_useronline_Port(ListHead* useronlinelist, char username[MAX_CREDENTIAL]){
+
+  ListItem* aux=useronlinelist->first;
+
+  while(aux){
+    UserOnlineListItem* item=(UserOnlineListItem*)aux;
+    if (strcmp(item->useronline->username, username)== 0){
+      if(DEBUG)
+        printf("....Giving IP of %s: %s  .... \n \n", username, item->useronline->ipaddr);
+      return item->useronline->port;
+    }
+
+    aux=aux->next;
+  }
+  return 0;
+}
+
+Chat* Give_useronline_Chat(ListHead* useronlinelist, char username[MAX_CREDENTIAL]){
+
+  ListItem* aux=useronlinelist->first;
+
+  while(aux){
+    UserOnlineListItem* item=(UserOnlineListItem*)aux;
+    if (strcmp(item->useronline->username, username)== 0){
+      if(DEBUG)
+        printf("....Giving IP of %s: %s  .... \n \n", username, item->useronline->ipaddr);
+      return item->useronline->chat;
+    }
+
+    aux=aux->next;
+  }
+  return NULL;
 }
 
 /* COSA MANCA

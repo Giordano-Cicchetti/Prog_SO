@@ -32,11 +32,16 @@ int socket_desc;
 
 //FC handler for exit with SIGHUP or SIGINT/SIGTSTP (sigaction)
 void quit_handler(){
-    
-    //FC closing the file
 
-    //*******  binaryFileWrite(fd,"ciao",5,0);  ******* TRIAL FOR SIGNAL HANDLER SIGHUP
-    binaryFileWrite(fd,"ciao",5,0);
+
+    //send CHAT_KO to all user_online
+    // TODO ******
+    //
+    //
+    //************
+
+
+    //FC closing the file
     close(fd);
     
     int ret = close(socket_desc);
@@ -274,15 +279,7 @@ void* connection_handler(int socket_desc) {
 
                 printf("\nChat already existing..\n");
                 //FC creating the user online for user : if he/she is already online would not be here (login failed)
-                Add_useronline_to_list(&usersonline_list,chat,user, ip);
-
-                //*********************************************************
-                //GC dummies messages 
-                for(int i=0;i<10;i++){
-                    Add_message_to_list(chat->list_msg,NORMAL_MESSAGE,"user",user,interlocutor);
-                    Add_message_to_list(chat->list_msg,NORMAL_MESSAGE,"interl",interlocutor,user);
-                }
-                //*********************************************************
+                Add_useronline_to_list(&usersonline_list,chat,user, ip,client_addr.sin_port);
 
                 //FC printing useronline list and their chat
                 UserOnline_list_print(&usersonline_list);
@@ -313,7 +310,7 @@ void* connection_handler(int socket_desc) {
                 Chat* user_chat=Find_chat_by_username(&chat_list, user);
 
                 //FC creating the user online for user : if he/she is already online would not be here (login failed)
-                Add_useronline_to_list(&usersonline_list, user_chat, user, ip);
+                Add_useronline_to_list(&usersonline_list, user_chat, user, ip,client_addr.sin_port);
                 
                  //FC printing useronline list and all chats
                 UserOnline_list_print(&usersonline_list);
@@ -356,6 +353,37 @@ void* connection_handler(int socket_desc) {
 
         }
         
+        
+        //**HEADER 9 NORMAL MESSAGE
+        else if(header==NORMAL_MESSAGE){
+            printf("ho ricevuto da %s \n",message->from);
+            printf("%s\n",message->content);
+            printf("questo client ha prota %d \n",client_addr.sin_port);
+
+            Chat* c = Chat_ispresent_between_users(&chat_list,message->from,message->to);
+            if(c==NULL){
+                //error da gestire
+                //TODO 
+            }
+
+            Add_message_to_list(c->list_msg,message->header,message->content,message->from,message->to);
+            char* pippo=UserOnline_ispresent(&usersonline_list,message->to);//user to is online, send the message)
+            if(pippo!=NULL && c==Give_useronline_Chat(&usersonline_list,message->to)){
+                char* receiver_ip=Give_useronline_IP(&usersonline_list,message->to);
+                client_addr.sin_addr.s_addr = inet_addr(receiver_ip);
+                client_addr.sin_port=Give_useronline_Port(&usersonline_list,message->to);
+                bytes_sent=0;
+                while ( bytes_sent < MESSAGE_SIZE) {
+                    ret = sendto(socket_desc, message , MESSAGE_SIZE, 0, (struct sockaddr*) &client_addr, sizeof(struct sockaddr_in));
+                    if (ret == -1 && errno == EINTR) continue;
+                    if (ret == -1) handle_error("Cannot write to the socket");
+                    bytes_sent = ret;
+                    }
+                
+            }
+            continue;
+        }
+
         // OTHER HEADERS!! ::::::::TODO:::::::::
 
 

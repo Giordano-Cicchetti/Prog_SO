@@ -3,6 +3,7 @@
 
 //FC file to keep users registered
 #define FILENAME "./registered_users"
+#include <netinet/in.h>
 
 //FC constants for username,password and message content length
 #define MAX_CREDENTIAL 128
@@ -104,6 +105,7 @@ Chat* Chat_ispresent_between_users(ListHead* chatlist, char user1[MAX_CREDENTIAL
 typedef struct {
     char username[MAX_CREDENTIAL]; //FC taken from the message sent by the client to the server to enter a Chat
     char ipaddr[15]; //FC a string "10.0.0.1" for the IPv4 address taken from the sockaddr_in struct got when the server receives a message from a client who enters a Chat
+    in_port_t port;
     Chat* chat;
 } UserOnline;
 
@@ -111,14 +113,16 @@ typedef struct {
 #define USERONLINE_SIZE (int)sizeof(UserOnline)
 
 //FC primitive functions to manage users online
-void UserOnline_create(UserOnline* useronline, char username[MAX_CREDENTIAL], char ipaddr[15], Chat* chat);
+void UserOnline_create(UserOnline* useronline, char username[MAX_CREDENTIAL], char ipaddr[15], in_port_t port, Chat* chat);
 void UserOnline_print(UserOnline* useronline);
 void UserOnline_list_print(ListHead* list);
-void Add_useronline_to_list(ListHead* head, Chat* chat, char username[MAX_CREDENTIAL], char ipaddr[15]);
+void Add_useronline_to_list(ListHead* head, Chat* chat, char username[MAX_CREDENTIAL], char ipaddr[15],in_port_t port);
 void Remove_useronline_from_list(ListHead* list, char username[MAX_CREDENTIAL]);
 void Remove_all_usersonline_from_list(ListHead* list);
 char* Give_useronline_IP(ListHead* useronlinelist, char username[MAX_CREDENTIAL]);
 char* UserOnline_ispresent(ListHead* useronlinelist, char username[MAX_CREDENTIAL]);
+in_port_t Give_useronline_Port(ListHead* useronlinelist, char username[MAX_CREDENTIAL]);
+Chat* Give_useronline_Chat(ListHead* useronlinelist, char username[MAX_CREDENTIAL]);
 
 //######################################################################################################################
 
