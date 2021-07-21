@@ -109,14 +109,32 @@ void* receiver_handler(void *arg) {
 
         //FC debugging
         if (DEBUG) printf("Received answer of %d bytes...\n",recv_bytes);
+        
+        if(m->header==SERVER_RECV){
+            //Do something
+            printf("\xE2\x9C\x93\n");
+        }
+        else if(m->header==CLIENT_READ){
+           
+            printf("\xE2\x9C\x93\n");
+        }
+        else if(m->header==CHAT_JOIN){
+            printf("\n");
+            printf(BYEL MOVE_CENTRE UYEL "%s has join the chat\e[1;32m" RESET BGRN, m->content); 
+            printf("\n\n");
+           
+        }
 
         //FC the message from the server arrived is printed
         if(strcmp(user,m->from)==0){
+           
             printf(BGRN "%s\e[1;32m\n", m->content);
         }
         else if(strcmp(user,m->to)==0){
+            
             printf(BRED MOVE_RIGHT "%s\e[1;32m\n", m->content); 
         }
+
     }
     pthread_exit(NULL);
 }

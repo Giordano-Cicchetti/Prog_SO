@@ -23,72 +23,72 @@
 //FC to test the functions created during the development
 int main(int argc, char** argv) {
   
-  ListHead list; 
-  List_init(&list);
-  Add_message_to_list(&list,3,"ITALIA","feffo","gio");
-  Add_message_to_list(&list,3,"INGHILTERRA","gio","feffo");
-  Add_message_to_list(&list,3,"BELGIO","jack","feffo");
-  printf(BWHT "size %d \n" reset,list.size);
-  Remove_all_messages_from_list(&list);
-  printf(BWHT "size %d \n \n" reset,list.size);
+//   ListHead list; 
+//   List_init(&list);
+//   Add_message_to_list(&list,3,"ITALIA","feffo","gio");
+//   Add_message_to_list(&list,3,"INGHILTERRA","gio","feffo");
+//   Add_message_to_list(&list,3,"BELGIO","jack","feffo");
+//   printf(BWHT "size %d \n" reset,list.size);
+//   Remove_all_messages_from_list(&list);
+//   printf(BWHT "size %d \n \n" reset,list.size);
 
-//-----------------------------------------------------------------------------------------//
-
-
-//FC how to create a chat: create a list of message,initialize it and then use the Add_chat_to_list function
-
-  ListHead* list_msg1=(ListHead*)malloc(sizeof(ListHead)); 
-  ListHead* list_msg2=(ListHead*)malloc(sizeof(ListHead)); 
-  ListHead list_chat;
-  ListHead list_online;
-  List_init(list_msg1); //FC remember to initialize a list before using it
-  List_init(&list_chat);
-  List_init(&list_online);
-  List_init(list_msg2);
-
-  char user1[MAX_CREDENTIAL]="federico";
-  char user2[MAX_CREDENTIAL]="giordano";
-
-  char user3[MAX_CREDENTIAL]="jacopo";
-  char user4[MAX_CREDENTIAL]="filippo";
-
-  Add_chat_to_list(&list_chat, user1, user2, list_msg1);  //FC it prints the Chat that is empty at the beginning
-  Add_chat_to_list(&list_chat, user3, user4, list_msg2); 
+// //-----------------------------------------------------------------------------------------//
 
 
-  Add_message_to_list(list_msg1,5,"BERRETTINI","feffo","gio"); //FC then it fills the Chat
-  Add_message_to_list(list_msg1,5,"DJOKOVIC","gio","feffo");
-  Add_message_to_list(list_msg1,5,"DJOKOVIC","feffo","gio");
-  Add_message_to_list(list_msg1,5,"DJOKOVIC","gio","feffo");
+// //FC how to create a chat: create a list of message,initialize it and then use the Add_chat_to_list function
 
-  Add_message_to_list(list_msg2,3,"ITALIA","feffo","gio");
-  Add_message_to_list(list_msg2,3,"INGHILTERRA","gio","feffo");
-  Add_message_to_list(list_msg2,3,"BELGIO","jack","feffo");
+//   ListHead* list_msg1=(ListHead*)malloc(sizeof(ListHead)); 
+//   ListHead* list_msg2=(ListHead*)malloc(sizeof(ListHead)); 
+//   ListHead list_chat;
+//   ListHead list_online;
+//   List_init(list_msg1); //FC remember to initialize a list before using it
+//   List_init(&list_chat);
+//   List_init(&list_online);
+//   List_init(list_msg2);
+
+//   char user1[MAX_CREDENTIAL]="federico";
+//   char user2[MAX_CREDENTIAL]="giordano";
+
+//   char user3[MAX_CREDENTIAL]="jacopo";
+//   char user4[MAX_CREDENTIAL]="filippo";
+
+//   Add_chat_to_list(&list_chat, user1, user2, list_msg1);  //FC it prints the Chat that is empty at the beginning
+//   Add_chat_to_list(&list_chat, user3, user4, list_msg2); 
 
 
-  Chat_list_print(&list_chat);
+//   Add_message_to_list(list_msg1,5,"BERRETTINI","feffo","gio"); //FC then it fills the Chat
+//   Add_message_to_list(list_msg1,5,"DJOKOVIC","gio","feffo");
+//   Add_message_to_list(list_msg1,5,"DJOKOVIC","feffo","gio");
+//   Add_message_to_list(list_msg1,5,"DJOKOVIC","gio","feffo");
+
+//   Add_message_to_list(list_msg2,3,"ITALIA","feffo","gio");
+//   Add_message_to_list(list_msg2,3,"INGHILTERRA","gio","feffo");
+//   Add_message_to_list(list_msg2,3,"BELGIO","jack","feffo");
+
+
+//   Chat_list_print(&list_chat);
   
-  //FC to print a single chat : Chat_print(((ChatListItem*)(list_chat.first))->chat);
+//   //FC to print a single chat : Chat_print(((ChatListItem*)(list_chat.first))->chat);
 
-  Chat* chat1=Find_chat_by_username(&list_chat,"jacopo");
-  if (chat1!=NULL){
-    Chat_print(chat1);
-  }
+//   Chat* chat1=Find_chat_by_username(&list_chat,"jacopo");
+//   if (chat1!=NULL){
+//     Chat_print(chat1);
+//   }
 
-  Chat* chat2= Chat_ispresent_between_users(&list_chat,"giordano","federico");
-  if (chat2!=NULL){
-    Chat_print(chat2);
-  }
+//   Chat* chat2= Chat_ispresent_between_users(&list_chat,"giordano","federico");
+//   if (chat2!=NULL){
+//     Chat_print(chat2);
+//   }
 
-  Add_useronline_to_list(&list_online,chat1,"jacopo","10.0.0.1");
-  Add_useronline_to_list(&list_online,chat1,"filippo","10.3.3.1");
+//   Add_useronline_to_list(&list_online,chat1,"jacopo","10.0.0.1");
+//   Add_useronline_to_list(&list_online,chat1,"filippo","10.3.3.1");
   
-  Give_useronline_IP(&list_online,"jacopo");
-  UserOnline_list_print(&list_online);
-  Remove_all_usersonline_from_list(&list_online);
-  UserOnline_list_print(&list_online);
+//   Give_useronline_IP(&list_online,"jacopo");
+//   UserOnline_list_print(&list_online);
+//   Remove_all_usersonline_from_list(&list_online);
+//   UserOnline_list_print(&list_online);
 
-  Remove_all_chats_from_list(&list_chat);
+//   Remove_all_chats_from_list(&list_chat);
 
 }
 

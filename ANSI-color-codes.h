@@ -72,6 +72,7 @@
 
 //Move Cursor
 #define MOVE_RIGHT "\033[40C"
+#define MOVE_CENTRE "\033[15C"
 #define MOVE_LEFT "\033[40D"
 #define CLEAR_SCREEN "\033[2J"
 

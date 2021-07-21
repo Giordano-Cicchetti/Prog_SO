@@ -296,6 +296,23 @@ void* connection_handler(int socket_desc) {
 
                 //GC send all messages in the list_msg to user
                 MessageList_send(chat->list_msg,socket_desc,&client_addr);
+
+                char* pippo=UserOnline_ispresent(&usersonline_list,interlocutor);//user to is online, send the message)
+                if(pippo!=NULL && chat==Give_useronline_Chat(&usersonline_list,interlocutor)){
+                    Message_init(&m,CHAT_JOIN,NULL,NULL,user,sizeof(user));
+                    char* receiver_ip=Give_useronline_IP(&usersonline_list,interlocutor);
+                    client_addr.sin_addr.s_addr = inet_addr(receiver_ip);
+                    client_addr.sin_port=Give_useronline_Port(&usersonline_list,interlocutor);
+                    bytes_sent=0;
+                    while ( bytes_sent < MESSAGE_SIZE) {
+                        ret = sendto(socket_desc, &m, MESSAGE_SIZE, 0, (struct sockaddr*) &client_addr, sizeof(struct sockaddr_in));
+                        if (ret == -1 && errno == EINTR) continue;
+                        if (ret == -1) handle_error("Cannot write to the socket");
+                        bytes_sent = ret;
+                    }
+
+                }
+
             
                 continue;
             }
@@ -366,9 +383,29 @@ void* connection_handler(int socket_desc) {
                 //TODO 
             }
 
+            //GC first of all the server send an ACK to the client: first tick.
+            Message_init(&m,SERVER_RECV,NULL,NULL,"ACKS",5);
+            bytes_sent=0;
+            while ( bytes_sent < MESSAGE_SIZE) {
+                ret = sendto(socket_desc, &m , MESSAGE_SIZE, 0, (struct sockaddr*) &client_addr, sizeof(struct sockaddr_in));
+                if (ret == -1 && errno == EINTR) continue;
+                if (ret == -1) handle_error("Cannot write to the socket");
+                bytes_sent = ret;
+            }
+
+            //GC Add this message to the list of the messages between two interlocutors
             Add_message_to_list(c->list_msg,message->header,message->content,message->from,message->to);
             char* pippo=UserOnline_ispresent(&usersonline_list,message->to);//user to is online, send the message)
             if(pippo!=NULL && c==Give_useronline_Chat(&usersonline_list,message->to)){
+                //GC send an other ack to the client to inform that the interlocutor has received the message
+                Message_init(&m,CLIENT_READ,NULL,NULL,"ACKC",5);
+                bytes_sent=0;
+                while ( bytes_sent < MESSAGE_SIZE) {
+                    ret = sendto(socket_desc, &m , MESSAGE_SIZE, 0, (struct sockaddr*) &client_addr, sizeof(struct sockaddr_in));
+                    if (ret == -1 && errno == EINTR) continue;
+                    if (ret == -1) handle_error("Cannot write to the socket");
+                    bytes_sent = ret;
+                }
                 char* receiver_ip=Give_useronline_IP(&usersonline_list,message->to);
                 client_addr.sin_addr.s_addr = inet_addr(receiver_ip);
                 client_addr.sin_port=Give_useronline_Port(&usersonline_list,message->to);
@@ -378,7 +415,7 @@ void* connection_handler(int socket_desc) {
                     if (ret == -1 && errno == EINTR) continue;
                     if (ret == -1) handle_error("Cannot write to the socket");
                     bytes_sent = ret;
-                    }
+                }
                 
             }
             continue;
