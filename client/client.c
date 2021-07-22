@@ -21,7 +21,8 @@
 int socket_desc;
 struct sockaddr_in server_addr = {0};
 
-pthread_t receiver_thread;
+//GC receiving thread id
+pthread_t receiver_thread=0;
 
 //FC current user
 char user[MAX_CREDENTIAL];
@@ -31,12 +32,17 @@ void quit_handler(){
     Message m;
     Message* message;
     int ret;
-     //GC close the receiver thread
-    if(pthread_cancel(receiver_thread)) {
-        printf("Error closing thread\n");
-        exit(EXIT_FAILURE);
-    }
 
+    //FC exiting
+    printf(BGRN "\n\nExiting...\n");
+
+    //GC close the receiver thread
+    if (receiver_thread != 0){
+        if(pthread_cancel(receiver_thread)){
+        printf(BWHT "Error closing thread\n");
+        exit(EXIT_FAILURE);
+        }
+    }
     //FC sending CHAT_KO to the server with from so that server can delete him/her as a User Online
     Message_init(&m,CHAT_KO,user,NULL,NULL,0);
     int bytes_sent=0;
@@ -46,11 +52,6 @@ void quit_handler(){
         if (ret == -1) handle_error("Cannot write to the socket");
         bytes_sent = ret;
     }
-
-    //FC exiting
-    printf(BGRN "\n\nExiting...\n");
-
-   
 
     //FC wait for response from the server with CHAT_KO otherwise it will restart the quit_handler
     char buf[MESSAGE_SIZE];
@@ -67,8 +68,11 @@ void quit_handler(){
 
     message=(Message*)buf;
     int response=message->header;
-    if(response != CHAT_KO) {printf("exit again"); quit_handler(); return;}
-
+    if(response != CHAT_KO) {  
+        printf(BWHT "Trying to exit again..."); quit_handler(); return; 
+    }
+    
+    //FC closing socket descriptor
     ret = close(socket_desc);
     if (ret < 0) handle_error("Cannot close the socket");
 
@@ -79,11 +83,10 @@ void quit_handler(){
     exit(EXIT_SUCCESS);
 }
 
-//GC receiving thread : it must only print the messages (HEADER:9) received
+//GC receiving thread : it must only print the messages (HEADER:9) received or handle the ticks and server shutdown
 void* receiver_handler(void *arg) {
-
+    //GC it takes the socket descriptor as a argument and uses some variables
     int socket_desc = *((int*) arg);
-    
     char buf[MESSAGE_SIZE];
     size_t buf_len = sizeof(buf);
     int recv_bytes;
@@ -105,32 +108,34 @@ void* receiver_handler(void *arg) {
 	    } while ( recv_bytes<=0 );
         buf[recv_bytes-1]='\0';
 
-        Message * m=(Message*)buf;
+        Message* m=(Message*)buf;
 
         //FC debugging
-        if (DEBUG) printf("Received answer of %d bytes...\n",recv_bytes);
+        if (DEBUG) printf(BWHT "Received answer of %d bytes...\n",recv_bytes);
         
+        //GC first tick
         if(m->header==SERVER_RECV){
-            //Do something
             printf("\xE2\x9C\x93\n");
         }
+        //GC second tick
         else if(m->header==CLIENT_READ){
-           
             printf("\xE2\x9C\x93\n");
         }
+        //GC server shutdown
         else if(m->header==CHAT_JOIN){
             printf("\n");
-            printf(BYEL MOVE_CENTRE UYEL "%s has join the chat\e[1;32m" RESET BGRN, m->content); 
+            printf(BYEL MOVE_CENTRE UYEL "%s has joined the chat\e[1;32m" RESET BGRN, m->content); 
             printf("\n\n");
            
         }
+        //GC server shutdown : client exits
         else if(m->header==CHAT_KO){
-            printf("Server shutdown \n Exiting...\n");
+            printf(BWHT "Server shutdown \n Exiting...\n");
             close(socket_desc);
             exit(EXIT_SUCCESS);
         }
 
-        //FC the message from the server arrived is printed
+        //FC the messages from the server arrived are printed on both sides
         if(strcmp(user,m->from)==0){
            
             printf(BGRN "%s\e[1;32m\n", m->content);
@@ -141,6 +146,7 @@ void* receiver_handler(void *arg) {
         }
 
     }
+    //GC exiting from the thread never executed
     pthread_exit(NULL);
 }
 
@@ -159,13 +165,13 @@ int main(int argc, char* argv[]) {
     //FC values returned by the syscalls called in the following part, bytes read and sent every time something is arrived
     int ret,bytes_sent,recv_bytes;  
 
-    /*FC create a socket for contacting the server using IPV4 and UDP protocol */
+    //FC create a socket for contacting the server using IPV4 and UDP protocol
     socket_desc = socket(AF_INET, SOCK_DGRAM, 0);
     if (socket_desc < 0)
         handle_error("Could not create socket");
 
     //FC debugging
-    if (DEBUG) fprintf(stderr, "Socket created...\n");
+    if (DEBUG) fprintf(stderr, BWHT "Socket created...\n");
 
     /*FC set up parameters for the connection and initiate a connection to the server,
     we must specify the server address, family and port */
@@ -186,6 +192,7 @@ int main(int argc, char* argv[]) {
 
     //##############################1STPHASE#######################################################################################
 
+    //GC username and password variables used in this section
     char* username = (char*)malloc(sizeof(char)*MAX_CREDENTIAL);
     char* password = (char*)malloc(sizeof(char)*MAX_CREDENTIAL);
 
@@ -221,7 +228,7 @@ int main(int argc, char* argv[]) {
                 bytes_sent = ret;
             }
             //FC debugging
-            if (DEBUG) fprintf(stderr, "Sent message of %d bytes...\n", bytes_sent);
+            if (DEBUG) fprintf(stderr, BWHT "Sent message of %d bytes...\n", bytes_sent);
 
             //GC wait for server's response
             recv_bytes = 0;
@@ -237,6 +244,7 @@ int main(int argc, char* argv[]) {
             //GC the inner buffer is a message from the server
             message=(Message*)buf;
 
+            //GC taking the header of the message
             int response=message->header;
 
             //GC if response is LOGIN_OK then quit the loop and go next
@@ -251,11 +259,11 @@ int main(int argc, char* argv[]) {
             else {
                 
                 if(strcmp(message->content, "login failed") == 0){
-                    printf("Username o Password errata \n");
+                    printf(BWHT "Username or Password failed \n");
                 }
                 
                 else{
-                    printf("Username already online \n");
+                    printf(BWHT "Username already online \n");
                 }
               
                 //GC this clear the stdin
@@ -268,7 +276,7 @@ int main(int argc, char* argv[]) {
         //GC if the user want to sign_up
         else if(c=='N' || c=='n'){
             //GC take the username
-            printf("You have to register to continue...\nInsert a nickname:  ");
+            printf(BWHT "You have to register to continue...\nInsert a nickname:  ");
             scanf("%s",username);
             //GC take the password
             printf("\nInsert a password:  ");
@@ -288,7 +296,7 @@ int main(int argc, char* argv[]) {
             }
 
             //FC debugging
-            if (DEBUG) fprintf(stderr, "Sent message of %d bytes...\n", bytes_sent);
+            if (DEBUG) fprintf(stderr, BWHT "Sent message of %d bytes...\n", bytes_sent);
 
             //GC wait for server's response
             recv_bytes = 0;
@@ -306,7 +314,7 @@ int main(int argc, char* argv[]) {
             
             //GC if exists a user with this username continue the loop 
             if(response==PREREGISTRATION_KO) {
-                printf("Username already used! \n");
+                printf(BWHT "Username already used! \n");
                 //GC this clear the stdin
                 while(getchar()!='\n');
                 continue;
@@ -323,7 +331,7 @@ int main(int argc, char* argv[]) {
                     bytes_sent = ret;
                 }
                 //FC debugging
-                if (DEBUG) fprintf(stderr, "Sent message of %d bytes...\n", bytes_sent);
+                if (DEBUG) fprintf(stderr,BWHT "Sent message of %d bytes...\n", bytes_sent);
 
 
                 //GC Wait for response from the server
@@ -340,12 +348,13 @@ int main(int argc, char* argv[]) {
 
                 message=(Message*)buf;
 
+                //GC taking the header of the messages
                 response=message->header;
 
                 //GC if response is equal to RESPONSE_KO, something went wrong so 
                 //its better to quit the program
                 if(response==REGISTRATION_KO){
-                    printf("Error adding user \n");
+                    printf(BWHT "Error adding user \n");
                     return 1;
                 }
                 strcpy(user,username);
@@ -389,15 +398,29 @@ int main(int argc, char* argv[]) {
 
     message=(Message*)buf;
 
+    //GC checking if the interlocutor is correct
     int response=message->header;
     char interlocutor[MAX_CREDENTIAL];
     if(response==USER_LIST_RESPONSE){
         char* list=message->content;
         Check_registered_user(list,interlocutor,user);
     }
-    printf(BRED "\nYour interlocutor is: %s \n",interlocutor);
-    if(strcmp(interlocutor,SERVER_COMMAND)==0) quit_handler(); //FC goto is ok since we have only one end-point
 
+    if (strcmp(interlocutor,SERVER_COMMAND)==0) {
+
+        ret = close(socket_desc);
+        if (ret < 0) handle_error("Cannot close the socket");
+
+        //FC debugging
+        if (DEBUG) fprintf(stderr,BWHT "Socket closed...\n");
+
+        printf(BWHT "Exiting...\n");
+
+        //FC exiting with success
+        exit(EXIT_SUCCESS);
+    }
+
+    printf(BRED "\nYour interlocutor is: %s \n",interlocutor);
 
     //FC request for a chat between user and interlocutor choosen at the previous point
     Message_init(&m,CHAT_REQUEST,user,NULL,interlocutor,strlen(interlocutor));
@@ -421,18 +444,29 @@ int main(int argc, char* argv[]) {
 
     } while ( recv_bytes<=0 );
 
+    //FC taking the message header
     message=(Message*)buf;
     response=message->header;
 
     //FC case 1: Chat created by the server (CHAT_OK)
     if (response==CHAT_OK){
         //FC debugging
-        if (DEBUG) fprintf(stderr, "The chat between you and %s has been successfully created in our server \n", interlocutor);
+        if (DEBUG) fprintf(stderr, BWHT "The chat between you and %s has been successfully created in our server \n", interlocutor);
     }
     else{
     //FC case 2: EXIT
-        quit_handler();
+        ret = close(socket_desc);
+        if (ret < 0) handle_error("Cannot close the socket");
+
+        //FC debugging
+        if (DEBUG) fprintf(stderr,BWHT "Socket closed...\n");
+
+        printf(BWHT "Exiting...\n");
+
+        //FC exiting with success
+        exit(EXIT_SUCCESS);
     }
+    
 
 //##############################ENDOF2NDPHASE#######################################################################################
 
@@ -440,18 +474,17 @@ int main(int argc, char* argv[]) {
 //###############################3THDPHASE############################################################################################
 
     //GC create a thread to handle receiving messages and detach it
-    
     ret = pthread_create(&receiver_thread, NULL, receiver_handler , (void *)&socket_desc);
     if (ret) handle_error_en(ret, "Could not create a new thread for receiving messages for your chat");
     
-    if (DEBUG) fprintf(stderr, "(Thread created) Now you can receive messages from your chat!\n");
+    if (DEBUG) fprintf(stderr, BWHT "(Thread created) Now you can receive messages from your chat!\n");
         
     ret = pthread_detach(receiver_thread); //GC we won't call phtread_join() on this thread
     if (ret) handle_error_en(ret, "Could not detach the receiving thread");
     
     //FC asking for the message to send
     printf(BGRN "\nYou just entered the chat with %s \n\n",interlocutor);
-    if (DEBUG) fprintf(stderr, "(Thread created) Now you can send messages from your chat!\n");
+    if (DEBUG) fprintf(stderr,BWHT "(Thread created) Now you can send messages from your chat!\n");
 
     //FC main loop to handle sending thread: it must send messages (HEADER:9) to the server
     while (1) {
@@ -462,7 +495,7 @@ int main(int argc, char* argv[]) {
 
         //FC read a line from stdin, fgets() reads up to sizeof(buf)-1 bytes and on success returns the buf passed as argument
         if (fgets(buf, sizeof(buf), stdin) != (char*)buf) {
-            fprintf(stderr, "Error while reading from stdin, exiting...\n");
+            fprintf(stderr,BWHT "Error while reading from stdin, exiting...\n");
             exit(EXIT_FAILURE);
         }
 
@@ -472,7 +505,7 @@ int main(int argc, char* argv[]) {
         //FC if the message is "QUIT\n", client shutdown exiting the loop
 		if (msg_len == quit_command_len && !memcmp(buf, quit_command, quit_command_len)){
 
-            if (DEBUG) fprintf(stderr, "Sent QUIT command ...\n");
+            if (DEBUG) fprintf(stderr, BWHT "Sent QUIT command ...\n");
             quit_handler();
 
         }
@@ -487,10 +520,8 @@ int main(int argc, char* argv[]) {
         }
 
         //FC debugging
-        if (DEBUG) fprintf(stderr, "Sent message of %d bytes...\n", bytes_sent);
+        if (DEBUG) fprintf(stderr, BWHT "Sent message of %d bytes...\n", bytes_sent);
 
-
-        
         memset(buf,0,buf_len);
         
     }
@@ -498,16 +529,16 @@ int main(int argc, char* argv[]) {
 
 //##############################ENDOF3THDPHASE############################################################################################
 
-//FC after the loop ends for a "QUIT\n", close the socket and release unused resources
+//FC never executed
 
     ret = close(socket_desc);
     if (ret < 0) handle_error("Cannot close the socket");
 
     //FC debugging
-    if (DEBUG) fprintf(stderr, "Socket closed...\n");
+    if (DEBUG) fprintf(stderr,BWHT "Socket closed...\n");
 
     //FC debugging
-    if (DEBUG) fprintf(stderr, "Exiting...\n");
+    if (DEBUG) fprintf(stderr,BWHT "Exiting...\n");
 
     //FC exiting with success
     exit(EXIT_SUCCESS);

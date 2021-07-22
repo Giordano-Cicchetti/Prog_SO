@@ -40,7 +40,7 @@ int sockaddr_len = sizeof(client_addr);
 void quit_handler(){
 
     int bytes_sent,ret=0;
-    //send CHAT_KO to all user_online
+    //GC sending CHAT_KO to all users online
     Message m;
     Message_init(&m,CHAT_KO,NULL,NULL,NULL,0);
     ListItem* aux=usersonline_list.first;
@@ -60,13 +60,14 @@ void quit_handler(){
 
     }
 
-
+    //FC removing all users online and chats from their lists (memory freed)
     Remove_all_usersonline_from_list(&usersonline_list);
     Remove_all_chats_from_list(&chat_list);
 
     //FC closing the file
     close(fd);
     
+    //FC closing the socket descriptor
     ret = close(socket_desc);
     if (ret < 0) handle_error("Cannot close the socket");
 
@@ -97,13 +98,7 @@ void* connection_handler(int socket_desc) {
     size_t buf_len = sizeof(buf);
    
     //FC setting buffer array with all zeros
-    memset(buf,0,buf_len);
-
-    //FC quit command and its size
-    char* quit_command = SERVER_COMMAND;
-    size_t quit_command_len = strlen(quit_command);
-
-
+    memset(buf,0,buf_len);  
 
     //FC echo loop
     while (1) {
@@ -127,10 +122,6 @@ void* connection_handler(int socket_desc) {
             
 		} while ( recv_bytes <= 0 );
 
-
-        //FC setting the ip address to a struct sockaddr_in -> struct in_addr -> field "s_addr" of "in_addr_t" type (in NBO)
-        //client_addr.sin_addr.s_addr = inet_addr("10.0.0.1");
-
         //FC taking the ip address from the clientaddr struct so that server can know who is the client
         char* dst=NULL;
         dst = inet_ntoa(client_addr.sin_addr); //FC return the IP
@@ -139,20 +130,18 @@ void* connection_handler(int socket_desc) {
 
         //FC debugging
         if (DEBUG) {
-                fprintf(stderr, "Received command of %d bytes...\n", recv_bytes);
+                fprintf(stderr,BWHT "Received command of %d bytes...\n", recv_bytes);
         }
 
         //GC I see the incoming bytes as a message struct
-
         Message* message= (Message*)buf;
         Message m;
 
         //GC I check for the type of the message looking into the header
         int header = message->header;
 
-
-
-        //------------DIFFERENT RESPONSES TO DIFFERENT MESSAGE HEADERS---------------
+                    
+                    //------------DIFFERENT RESPONSES TO DIFFERENT MESSAGE HEADERS---------------
 
 
         //**HEADER 0-1-2** : LOGIN
@@ -190,7 +179,7 @@ void* connection_handler(int socket_desc) {
                 bytes_sent = ret;
             }
             printf(BWHT "Sent message to the client for login \n");
-            if(DEBUG)User_print(fd,num_users);
+            if(DEBUG) User_print(fd,num_users);
             continue;
         }
         
@@ -221,7 +210,7 @@ void* connection_handler(int socket_desc) {
                 if (ret == -1) handle_error("Cannot write to the socket");
                 bytes_sent = ret;
             }
-            printf("sent message to the client for username validation \n");
+            printf(BWHT "Sent message to the client for username validation \n");
             continue;
 
         }
@@ -252,14 +241,15 @@ void* connection_handler(int socket_desc) {
                 if (ret == -1) handle_error("Cannot write to the socket");
                 bytes_sent = ret;
             }
-            printf("sent message to the client for registration \n");
-            if(DEBUG)User_print(fd,num_users);
+            printf(BWHT "Sent message to the client for registration \n");
+            if(DEBUG) User_print(fd,num_users);
             continue;
 
         }
 
         //**HEADER 15-16** : REQUEST OF USERS LIST
-
+        
+        //FC sending the list of usernames to the client asking for it
         else if(header==USER_LIST_REQUEST){
             char dummy[num_users*MAX_CREDENTIAL];
             User_all_usernames(fd,dummy,num_users);
@@ -280,11 +270,12 @@ void* connection_handler(int socket_desc) {
         
         //**HEADER 12-13** : CHAT REQUEST - CHAT_OK
         else if(header==CHAT_REQUEST){
-            
+            //FC taking the two interlocutors
             char* user=message->from;
             char* interlocutor=message->content;
             printf(BRED "\nChat request from %s with %s\n",user,interlocutor);
-            
+
+            //FC to see if the chat is present between them
             Chat* chat= NULL;
             chat=Chat_ispresent_between_users(&chat_list,user,interlocutor);
 
@@ -296,14 +287,14 @@ void* connection_handler(int socket_desc) {
             //FC chat is present: sending the previous message
             if (chat!=NULL){
 
-                printf("\nChat already existing..\n");
+                printf(BWHT "\nChat already existing..\n");
                 //FC creating the user online for user : if he/she is already online would not be here (login failed)
                 Add_useronline_to_list(&usersonline_list,chat,user, ip,client_addr.sin_port);
 
                 //FC printing useronline list and their chat
                 UserOnline_list_print(&usersonline_list);
                 Chat_print(chat);
-
+                //FC sending CHAT_OK
                 Message_init(&m,CHAT_OK,NULL,NULL,NULL,0);
                 bytes_sent=0;
                 while ( bytes_sent < MESSAGE_SIZE) {
@@ -316,8 +307,9 @@ void* connection_handler(int socket_desc) {
                 //GC send all messages in the list_msg to user
                 MessageList_send(chat->list_msg,socket_desc,&client_addr);
 
-                char* pippo=UserOnline_ispresent(&usersonline_list,interlocutor);//user to is online, send the message)
-                if(pippo!=NULL && chat==Give_useronline_Chat(&usersonline_list,interlocutor)){
+                //GC if interlocutor is online, send the message that the other user is entering the chat 
+                char* present=UserOnline_ispresent(&usersonline_list,interlocutor);
+                if(present!=NULL && chat==Give_useronline_Chat(&usersonline_list,interlocutor)){
                     Message_init(&m,CHAT_JOIN,NULL,NULL,user,sizeof(user));
                     char* receiver_ip=Give_useronline_IP(&usersonline_list,interlocutor);
                     client_addr.sin_addr.s_addr = inet_addr(receiver_ip);
@@ -338,7 +330,8 @@ void* connection_handler(int socket_desc) {
 
             else{ //FC chat is NOT present
 
-                printf("\nCreating chat..\n");
+                //FC creating chat
+                printf(BWHT "\nCreating chat..\n");
                 ListHead* list_msg=(ListHead*)malloc(sizeof(ListHead)); 
                 List_init(list_msg);
                 Add_chat_to_list(&chat_list, user, interlocutor, list_msg); 
@@ -348,9 +341,8 @@ void* connection_handler(int socket_desc) {
                 //FC creating the user online for user : if he/she is already online would not be here (login failed)
                 Add_useronline_to_list(&usersonline_list, user_chat, user, ip,client_addr.sin_port);
                 
-                 //FC printing useronline list and all chats
+                //FC printing useronline list and all chats
                 UserOnline_list_print(&usersonline_list);
-                
                 Chat_list_print(&chat_list);
 
                 Message_init(&m,CHAT_OK,NULL,NULL,NULL,0);
@@ -373,7 +365,7 @@ void* connection_handler(int socket_desc) {
             char* from=message->from;
             UserOnline_list_print(&usersonline_list);
             Remove_useronline_from_list(&usersonline_list,from);
-            printf("%s is asking to exit the Chat, the updated list of online users is..\n\n",from);
+            printf(BWHT "%s is asking to exit the Chat, the updated list of online users is..\n\n",from);
             UserOnline_list_print(&usersonline_list);
             
             Message_init(&m,CHAT_KO,NULL,NULL,NULL,0);
@@ -384,7 +376,7 @@ void* connection_handler(int socket_desc) {
                      if (ret == -1) handle_error("Cannot write to the socket");
                      bytes_sent = ret;
                 }
-            printf("Sent to the client the confirm to exit");
+            printf(BWHT "Sent to the client the confirm to exit");
             continue;
 
         }
@@ -392,14 +384,13 @@ void* connection_handler(int socket_desc) {
         
         //**HEADER 9 NORMAL MESSAGE
         else if(header==NORMAL_MESSAGE){
-            printf("ho ricevuto da %s \n",message->from);
-            printf("%s\n",message->content);
-            printf("questo client ha prota %d \n",client_addr.sin_port);
+            printf(BWHT "I received from %s \n",message->from);
+            printf(BWHT "\nMessage: %s\n",message->content);
+            printf(BWHT "This client has port number: %d \n",client_addr.sin_port);
 
             Chat* c = Chat_ispresent_between_users(&chat_list,message->from,message->to);
             if(c==NULL){
-                //error da gestire
-                //TODO 
+                quit_handler();
             }
 
             //GC first of all the server send an ACK to the client: first tick.
@@ -414,9 +405,10 @@ void* connection_handler(int socket_desc) {
 
             //GC Add this message to the list of the messages between two interlocutors
             Add_message_to_list(c->list_msg,message->header,message->content,message->from,message->to);
-            char* pippo=UserOnline_ispresent(&usersonline_list,message->to);//user to is online, send the message)
-            if(pippo!=NULL && c==Give_useronline_Chat(&usersonline_list,message->to)){
-                //GC send an other ack to the client to inform that the interlocutor has received the message
+            //GC if interlocutor is online, send the message that the other user is entering the chat 
+            char* is_present=UserOnline_ispresent(&usersonline_list,message->to);
+            if(is_present!=NULL && c==Give_useronline_Chat(&usersonline_list,message->to)){
+                //GC send an other ACK to the client to inform that the interlocutor has received the message
                 Message_init(&m,CLIENT_READ,NULL,NULL,"ACKC",5);
                 bytes_sent=0;
                 while ( bytes_sent < MESSAGE_SIZE) {
@@ -425,6 +417,7 @@ void* connection_handler(int socket_desc) {
                     if (ret == -1) handle_error("Cannot write to the socket");
                     bytes_sent = ret;
                 }
+                //GC if the interlocutor is in the chat, the server works as a forwarder
                 char* receiver_ip=Give_useronline_IP(&usersonline_list,message->to);
                 client_addr.sin_addr.s_addr = inet_addr(receiver_ip);
                 client_addr.sin_port=Give_useronline_Port(&usersonline_list,message->to);
@@ -440,53 +433,14 @@ void* connection_handler(int socket_desc) {
             continue;
         }
 
-        // OTHER HEADERS!! ::::::::TODO:::::::::
-
-
-
-//------------------------------------------RESPONSE TEMPORARY--------------------------------------------------------
-
-        //FC receive message from client and print it as green bold text
-        printf(BRED "Client: %s \n" reset ,buf);
-
-        /*FC only if the bytes received are equal to the length of the "quit" command the comparison is made,
-        in that case no sending is needed so we can restart the loop */
-        if (recv_bytes == quit_command_len && !memcmp(buf, quit_command, quit_command_len)){
-
-            if (DEBUG) fprintf(stderr, "Received QUIT command...\n");
-            continue;
-
-         }
-        printf(" header %d \n from %s to %s \n",((Message*)buf)->header,((Message*)buf)->from,((Message*)buf)->to);
-        memset(buf,0,buf_len);
-        fprintf(stderr, BGRN  "Server:");
-        //FC read a line from stdin, fgets() reads up to sizeof(buf)-1 bytes and on success returns the buf passed as argument
-        if (fgets(buf, sizeof(buf), stdin) != (char*)buf) {
-            fprintf(stderr, "Error while reading from stdin, exiting...\n");
-            exit(EXIT_FAILURE);
-        }
-
-        printf("%s\n",buf);
-         //FC length of the message
-        int msg_len = strlen(buf);
-
-		//FC send message to server, sendto() with flags = 0 is equivalent to write() with a descriptor
-        bytes_sent=0;
-        while ( bytes_sent < msg_len) {
-            ret = sendto(socket_desc, buf, msg_len, 0, (struct sockaddr*) &client_addr, sizeof(struct sockaddr_in));
-            if (ret == -1 && errno == EINTR) continue;
-            if (ret == -1) handle_error("Cannot write to the socket");
-            bytes_sent = ret;
-        }
-
     }// end of while(1)
 
-    //FC after the loop ends (now it is never), close the socket and release unused resources
+    //FC after the loop ends (now it is never), close the socket and release unused resources: never executed
     ret = close(socket_desc);
     if (ret < 0) handle_error("Cannot close socket for incoming connection");
 
     //FC debugging
-    if (DEBUG) fprintf(stderr, "Socket closed...\n");
+    if (DEBUG) fprintf(stderr, BWHT "Socket closed...\n");
 
     //FC end of the handler function
     return NULL;
@@ -540,7 +494,7 @@ int main(int argc, char* argv[]) {
         handle_error("Could not create socket");
 
     //FC debugging
-    if (DEBUG) fprintf(stderr, "Socket created...\n");
+    if (DEBUG) fprintf(stderr, BWHT "Socket created...\n");
 
     /*FC we enable SO_REUSEADDR to quickly restart our server after a crash:
     for a temporary binding of the address in "bind" call*/
@@ -560,7 +514,7 @@ int main(int argc, char* argv[]) {
         handle_error("Cannot bind address to socket");
 
     //FC debugging
-    if (DEBUG) fprintf(stderr, "Binded address to socket...\n");
+    if (DEBUG) fprintf(stderr, BWHT "Binded address to socket...\n");
 
     //FC loop to handle incoming connections (sequentially)
     while (1) {
@@ -568,7 +522,7 @@ int main(int argc, char* argv[]) {
 		//FC ! remember : it is not required to accept an incoming connection in UDP protocol
 
         //FC debugging
-        if (DEBUG) fprintf(stderr, "Opening connection handler...\n");
+        if (DEBUG) fprintf(stderr, BWHT "Opening connection handler...\n");
 
         //FC handler of each connection
         connection_handler(socket_desc);

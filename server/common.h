@@ -33,8 +33,8 @@
 
 #define CHAT_REQUEST        12 //sent from the client when the interlocutor is chosen 
 #define CHAT_OK             13 //sent from the server when the chat is created
-#define CHAT_KO             14 //sent from the client when asks to leave the chat and wait for the server to respond with it
-#define CHAT_JOIN           15
+#define CHAT_KO             14 //sent from the client when asks to leave the chat and wait for the server to respond with it or sent from the server when it crashes
+#define CHAT_JOIN           15 //sent from the server when a client enters a chat already existing
 
 #define USER_LIST_REQUEST   16 //sent from the client to ask for the users list
 #define USER_LIST_RESPONSE  17 //sent from the server with the users list

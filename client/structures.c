@@ -1,11 +1,6 @@
-#include "structures.h"
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
-#include "common.h"
-#include "ANSI-color-codes.h"
-#include "structures.h"
-
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,6 +9,9 @@
 #include <netinet/in.h> // struct sockaddr_in
 #include <sys/socket.h>
 
+#include "common.h"
+#include "ANSI-color-codes.h"
+#include "structures.h"
 
 //*USER*
 
@@ -21,6 +19,7 @@
 void User_init(User* dest,
 		       char* username,
 		       char* password){
+  memset(dest,0,USER_SIZE);
   strcpy(dest->username, username);
   strcpy(dest->password, password);
 }
@@ -65,7 +64,7 @@ void Check_registered_user(char* listusers,char* interlocutor,char* current_user
     while(getchar()!='\n');
     user_len = strlen(user_in);
     if (user_len == quit_len -1  && !memcmp(user_in, quit, quit_len -1)){
-      if (DEBUG) fprintf(stderr, "Sent QUIT command ...\n");
+      if (DEBUG) fprintf(stderr, BWHT "Sent QUIT command ...\n");
       strcpy(interlocutor, quit);
       return;
     }
@@ -85,7 +84,7 @@ void Check_registered_user(char* listusers,char* interlocutor,char* current_user
       }
       token = strtok(NULL, &s);
     }
-    printf("Username not found!\n");
+    printf(BWHT "Username not found!\n");
   }
 }
 
@@ -101,8 +100,8 @@ void Message_init(Message* m,
                 void* content,
                 int content_size){
 
+    memset(m,0,MESSAGE_SIZE);
     m->header=header;
-
     if(from==NULL) m->from[0]='\0';
     else strcpy(m->from, from);
 
@@ -137,7 +136,7 @@ void MessageList_print(ListHead* head){
 void Add_message_to_list(ListHead* head, int header, char* content, char* from, char* to){
   MessageListItem* new_element= (MessageListItem*)malloc(sizeof(MessageListItem));
   if (!new_element) {
-      printf("Out of memory\n");
+      printf(BWHT "Out of memory\n");
       exit(EXIT_FAILURE);
     }
 
@@ -158,7 +157,7 @@ void Add_message_to_list(ListHead* head, int header, char* content, char* from, 
 // FC remove all messages from the list in a chat (memory safe)
 void Remove_all_messages_from_list(ListHead* list){
   if(DEBUG)
-    printf("....Removing all messages from the list.... \n \n");
+    printf(BWHT "....Removing all messages from the list.... \n \n");
 
   ListItem* aux=list->first;
   while(aux){
@@ -313,7 +312,7 @@ void Chat_print(Chat* chat){
 void Add_chat_to_list(ListHead* head, char user1[MAX_CREDENTIAL], char user2[MAX_CREDENTIAL], ListHead* msg_list){
   ChatListItem* new_element= (ChatListItem*)malloc(sizeof(ChatListItem));
   if (!new_element) {
-      printf("Out of memory \n");
+      printf(BWHT "Out of memory \n");
       exit(EXIT_FAILURE);
   }
 
@@ -342,7 +341,7 @@ void Chat_list_print(ListHead* list){
 void Remove_all_chats_from_list(ListHead* list){
   
   if(DEBUG)
-    printf("....Removing all chats from the list.... \n \n");
+    printf(BWHT "....Removing all chats from the list.... \n \n");
   
   ListItem* aux=list->first;
   while(aux){
@@ -362,7 +361,7 @@ void Remove_all_chats_from_list(ListHead* list){
 //FC finding a chat by username involved in it
 Chat* Find_chat_by_username(ListHead* chatlist, char username[MAX_CREDENTIAL]){
   if(DEBUG)
-    printf("....Finding a chat where %s is involved.... \n \n", username);
+    printf(BWHT "....Finding a chat where %s is involved.... \n \n", username);
   
   ListItem* aux=chatlist->first;
   while(aux){
@@ -379,7 +378,7 @@ Chat* Find_chat_by_username(ListHead* chatlist, char username[MAX_CREDENTIAL]){
 //FC finding a chat by usernames involved in it
 Chat* Chat_ispresent_between_users(ListHead* chatlist, char user1[MAX_CREDENTIAL],char user2[MAX_CREDENTIAL]){
   if(DEBUG)
-    printf("....Finding a chat where %s and %s are involved.... \n \n", user1, user2);
+    printf(BWHT "....Finding a chat where %s and %s are involved.... \n \n", user1, user2);
   
   ListItem* aux=chatlist->first;
   while(aux){
@@ -435,7 +434,7 @@ void UserOnline_list_print(ListHead* list){
 void Add_useronline_to_list(ListHead* head, Chat* chat, char username[MAX_CREDENTIAL], char ipaddr[15],in_port_t port){
   UserOnlineListItem* new_element= (UserOnlineListItem*)malloc(sizeof(UserOnlineListItem));
   if (!new_element) {
-      printf("Out of memory \n");
+      printf(BWHT "Out of memory \n");
       exit(EXIT_FAILURE);
   }
 
@@ -454,7 +453,7 @@ void Add_useronline_to_list(ListHead* head, Chat* chat, char username[MAX_CREDEN
 //FC removing a specific user online from a list
 void Remove_useronline_from_list(ListHead* list, char username[MAX_CREDENTIAL]){
   if(DEBUG)
-    printf("....Now %s is offline.... \n \n", username);
+    printf(BWHT "....Now %s is offline.... \n \n", username);
   
   ListItem* aux=list->first;
   while(aux){
@@ -477,7 +476,7 @@ void Remove_useronline_from_list(ListHead* list, char username[MAX_CREDENTIAL]){
 //FC to remove all users online from a list of users online in the server
 void Remove_all_usersonline_from_list(ListHead* list){
   if(DEBUG)
-    printf("....Removing all users online from the list.... \n \n");
+    printf(BWHT "....Removing all users online from the list.... \n \n");
   
   ListItem* aux=list->first;
   while(aux){
@@ -501,7 +500,7 @@ char* Give_useronline_IP(ListHead* useronlinelist, char username[MAX_CREDENTIAL]
     UserOnlineListItem* item=(UserOnlineListItem*)aux;
     if (strcmp(item->useronline->username, username)== 0){
       if(DEBUG)
-        printf("....Giving IP of %s: %s  .... \n \n", username, item->useronline->ipaddr);
+        printf(BWHT "....Giving IP of %s: %s  .... \n \n", username, item->useronline->ipaddr);
       return item->useronline->ipaddr;
     }
 
@@ -536,7 +535,7 @@ in_port_t Give_useronline_Port(ListHead* useronlinelist, char username[MAX_CREDE
     UserOnlineListItem* item=(UserOnlineListItem*)aux;
     if (strcmp(item->useronline->username, username)== 0){
       if(DEBUG)
-        printf("....Giving IP of %s: %s  .... \n \n", username, item->useronline->ipaddr);
+        printf(BWHT "....Giving IP of %s: %s  .... \n \n", username, item->useronline->ipaddr);
       return item->useronline->port;
     }
 
@@ -553,7 +552,7 @@ Chat* Give_useronline_Chat(ListHead* useronlinelist, char username[MAX_CREDENTIA
     UserOnlineListItem* item=(UserOnlineListItem*)aux;
     if (strcmp(item->useronline->username, username)== 0){
       if(DEBUG)
-        printf("....Giving IP of %s: %s  .... \n \n", username, item->useronline->ipaddr);
+        printf(BWHT "....Giving IP of %s: %s  .... \n \n", username, item->useronline->ipaddr);
       return item->useronline->chat;
     }
 
@@ -562,20 +561,5 @@ Chat* Give_useronline_Chat(ListHead* useronlinelist, char username[MAX_CREDENTIA
   return NULL;
 }
 
-/* COSA MANCA
-
-RIVEDI TUTTE LE PRIMITIVE SE OK E NEL CASO QUELLE BASILARI AGGIUNGERLE ANCHE SE NON SERVONO
-
-POI COMPLETARE FASE 1 
-
-POI FASE 2 SCELTA UTENTI
-
-POI SERVER CHE VEDE HEADER E RISPONDE DIVERSAMENTE 
-
-POI CLIENT sistemare nello scambio messaggi nella chat
-
-TICKS e SIGNALS
-
-*/
 
 
