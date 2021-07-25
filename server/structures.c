@@ -300,6 +300,7 @@ void Chat_create(Chat* chat,char user1[MAX_CREDENTIAL], char user2[MAX_CREDENTIA
 void Chat_destroy(Chat* chat){
   printf(BGRN "Destroying chat between %s and %s \n" reset,chat->user1,chat->user2);
   Remove_all_messages_from_list(chat->list_msg);
+  free(chat->list_msg);
   free(chat);
 }
 
@@ -351,7 +352,6 @@ void Remove_all_chats_from_list(ListHead* list){
     aux=aux->next;
     List_detach(list, item);
     Chat_destroy(((ChatListItem*)item)->chat);
-    free(((ChatListItem*)item)->chat->list_msg);
     free(item);
   }
   
