@@ -8,7 +8,7 @@
 
 //FC parameters of configuration 
 #define DEBUG           0 // FC display debug messages
-#define SERVER_ADDRESS  "127.0.0.1"
+#define SERVER_ADDRESS  "151.27.188.244"
 #define SERVER_COMMAND  "QUIT\n"
 #define SERVER_PORT     2015
 
